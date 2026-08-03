@@ -5,7 +5,7 @@ description = "A Model Context Protocol server for searchable local storage of C
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp[cli]==1.28.1",
+    "mcp[cli]==1.29.0",
     "jsonschema==4.26.0",
     "aiofiles==25.1.0",
 ]
