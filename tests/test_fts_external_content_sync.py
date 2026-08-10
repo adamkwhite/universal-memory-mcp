@@ -113,9 +113,13 @@ def test_init_repairs_a_desynced_index(tmp_path):
         )
         conn.commit()
 
+    # Older SQLite reports the generic "database disk image is malformed";
+    # newer builds name the orphan outright ("fts5: missing row N from content
+    # table"). Accept either — the assertion is that the forged desync is
+    # detectable as an error, not which wording this SQLite happens to use.
     with (
         sqlite3.connect(db_path) as conn,
-        pytest.raises(sqlite3.DatabaseError, match="malformed"),
+        pytest.raises(sqlite3.DatabaseError, match="malformed|missing row"),
     ):
         conn.execute(
             "SELECT id FROM conversations_fts WHERE conversations_fts MATCH 'phantom'"
