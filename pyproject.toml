@@ -32,7 +32,7 @@ dev = [
 # which is how an isort pass silently relocated a `# type: ignore` comment and
 # broke a mypy fix (#156). Pinned for the same S8544 reason as dev.
 lint = [
-    "ruff==0.15.22",
+    "ruff==0.16.1",
     "mypy==2.3.0",
     # mypy needs the same stubs the pre-commit hook installs, or the CI type
     # check fails on `Library stubs not installed for "aiofiles"` even though
@@ -91,6 +91,11 @@ exclude = [
     "dist",
     "data",
     "scripts",  # operational one-offs, out of quality scope (mirrors sonar.exclusions)
+    # Ruff 0.16 began formatting Python code blocks inside Markdown. Docs here
+    # include historical design write-ups and completed PRDs whose snippets are
+    # a record of what was written at the time, not live code — reformatting
+    # them is churn every ruff bump would repeat. Ruff owns .py, not prose.
+    "*.md",
 ]
 
 [tool.ruff.lint.per-file-ignores]
