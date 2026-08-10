@@ -12,7 +12,7 @@ default_stages: [pre-commit]
 repos:
   # Python linting and formatting with Ruff (replaces black, flake8, isort)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
+    rev: v0.16.1
     hooks:
       - id: ruff
         name: Lint Python code with Ruff
