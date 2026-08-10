@@ -118,38 +118,100 @@ class SearchDatabase:
                     "ON conversations(conversation_type)"
                 )
 
-                # Create triggers to maintain FTS5 table
+                # Create triggers to maintain the FTS5 table.
+                #
+                # ``conversations_fts`` is an EXTERNAL CONTENT table
+                # (``content='conversations'``), so it stores only the index
+                # and reads column values back from ``conversations`` by
+                # rowid. That makes rowid alignment the whole contract:
+                # entries must be written with an explicit ``rowid`` and
+                # removed with the ``'delete'`` command carrying the ORIGINAL
+                # column values. Ordinary INSERT/DELETE/UPDATE statements
+                # against the virtual table silently desync the index, and a
+                # later MATCH that hits an orphaned entry fails the read-back
+                # with "database disk image is malformed".
+                #
+                # These are dropped and recreated unconditionally so databases
+                # carrying the earlier (non-external-content) trigger bodies
+                # are migrated in place.
+                conn.execute("DROP TRIGGER IF EXISTS conversations_ai")
+                conn.execute("DROP TRIGGER IF EXISTS conversations_ad")
+                conn.execute("DROP TRIGGER IF EXISTS conversations_au")
+
                 conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS conversations_ai
+                    CREATE TRIGGER conversations_ai
                     AFTER INSERT ON conversations BEGIN
-                        INSERT INTO conversations_fts(id, title, content, topics_text)
-                        VALUES (new.id, new.title, new.content, new.topics_text);
+                        INSERT INTO conversations_fts(
+                            rowid, id, title, content, topics_text)
+                        VALUES (new.rowid, new.id, new.title, new.content,
+                                new.topics_text);
                     END
                 """)
 
                 conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS conversations_ad
+                    CREATE TRIGGER conversations_ad
                     AFTER DELETE ON conversations BEGIN
-                        DELETE FROM conversations_fts WHERE id = old.id;
+                        INSERT INTO conversations_fts(
+                            conversations_fts, rowid, id, title, content, topics_text)
+                        VALUES ('delete', old.rowid, old.id, old.title, old.content,
+                                old.topics_text);
                     END
                 """)
 
                 conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS conversations_au
+                    CREATE TRIGGER conversations_au
                     AFTER UPDATE ON conversations BEGIN
-                        UPDATE conversations_fts SET
-                            title = new.title,
-                            content = new.content,
-                            topics_text = new.topics_text
-                        WHERE id = new.id;
+                        INSERT INTO conversations_fts(
+                            conversations_fts, rowid, id, title, content, topics_text)
+                        VALUES ('delete', old.rowid, old.id, old.title, old.content,
+                                old.topics_text);
+                        INSERT INTO conversations_fts(
+                            rowid, id, title, content, topics_text)
+                        VALUES (new.rowid, new.id, new.title, new.content,
+                                new.topics_text);
                     END
                 """)
 
                 conn.commit()
 
+                # Heal databases that already desynced under the old triggers.
+                self._repair_fts_desync(conn)
+
         except sqlite3.Error as e:
             self.logger.exception(f"Database initialization failed: {e}")
             raise
+
+    def _repair_fts_desync(self, conn: sqlite3.Connection) -> None:
+        """Rebuild the FTS index if it holds more documents than the table.
+
+        Databases written under the pre-external-content triggers leaked one
+        orphaned index entry per re-saved conversation. Those orphans are
+        invisible until a MATCH happens to hit one, at which point the
+        read-back against ``conversations`` fails the whole query with
+        "database disk image is malformed" — so every search breaks at once
+        while tag and topic lookups keep working.
+
+        Comparing indexed-document count against row count is cheap enough to
+        run at init; the rebuild only fires when they actually disagree.
+        """
+        try:
+            rows = conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0]
+            docs = conn.execute("SELECT COUNT(*) FROM conversations_fts_docsize").fetchone()[0]
+        except sqlite3.Error:
+            # ``columnsize=0`` builds have no docsize shadow table. Nothing to
+            # compare against, so leave the index alone.
+            return
+
+        if docs == rows:
+            return
+
+        self.logger.warning(
+            "FTS index desynced (%d indexed documents vs %d rows); rebuilding",
+            docs,
+            rows,
+        )
+        conn.execute("INSERT INTO conversations_fts(conversations_fts) VALUES('rebuild')")
+        conn.commit()
 
     def _migrate_metadata_columns(self, conn: sqlite3.Connection) -> None:
         """Add metadata columns to pre-existing ``conversations`` tables.
@@ -189,14 +251,32 @@ class SearchDatabase:
             custom_fields_json = json.dumps(custom_fields) if custom_fields else None
 
             with sqlite3.connect(self.db_path) as conn:
-                # Insert into main table
+                # Upsert rather than INSERT OR REPLACE: REPLACE deletes and
+                # re-inserts the row, which assigns a NEW rowid and (with
+                # recursive_triggers off, the default) skips the AFTER DELETE
+                # trigger entirely. Both halves break the external-content
+                # FTS5 contract — the old index entry is orphaned and the new
+                # one lands under a rowid the content table no longer uses.
+                # ON CONFLICT keeps the rowid stable and fires AFTER UPDATE.
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO conversations
+                    INSERT INTO conversations
                     (id, title, content, date, created_at, file_path,
                      topics_json, topics_text, session_id, user_id,
                      conversation_type, custom_fields_json)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        title = excluded.title,
+                        content = excluded.content,
+                        date = excluded.date,
+                        created_at = excluded.created_at,
+                        file_path = excluded.file_path,
+                        topics_json = excluded.topics_json,
+                        topics_text = excluded.topics_text,
+                        session_id = excluded.session_id,
+                        user_id = excluded.user_id,
+                        conversation_type = excluded.conversation_type,
+                        custom_fields_json = excluded.custom_fields_json
                 """,
                     (
                         conversation_data["id"],
