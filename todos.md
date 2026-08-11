@@ -4,9 +4,9 @@ This file maintains persistent todos across Claude Code sessions.
 
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
 
-**Store integrity — one bug class, found three times (PRs #190-#194)**
+**Store integrity — one bug class, found four times (PRs #190-#196)**
 
-All three were the same shape: **two stores agreeing on a total while disagreeing on
+All four were the same shape: **two stores agreeing on a total while disagreeing on
 contents.** Count comparisons cannot see it, which is why each hid for months.
 
 - [x] **#190** fix(search): keep the FTS5 index in sync with its external content table.
@@ -45,18 +45,37 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 - [x] Deleted 13 merged branches. Four unmerged ones deliberately left (see below).
 
 **Follow-ups this session opened**
+- [x] **#196** fix(migrate): `verify_migration` compared counts and gated `main()`'s
+  "✅ Migration verified successfully!" (exit 0) on them, so a store with equal totals and zero
+  overlap passed. Compares identities now; `contents_match` is the verdict.
+- [x] Branch fate decided — all five deleted after audit. The three closed-PR branches and the
+  orphan dependabot one were superseded; local-only `cleanup/remove-test-directories` held only
+  artifacts main had deliberately removed (SonarCloud badge SVGs, `archive/`, `scripts/bulk_import.py`
+  from #113, `standalone_test.py` from #180). Repo is down to `main` alone.
+- [x] **#197** chore: renamed to `universal-memory-mcp` — package name, logger hierarchy,
+  README/CLAUDE.md. Runtime identifiers deliberately kept: `~/claude-memory`, `~/.claude-memory`,
+  `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `FastMCP("claude-memory")`, `sonar.projectKey`,
+  `claude-memory-mcp-venv`. Renaming any of them orphans a working install for no functional gain.
+
+**Open**
+
+- [ ] **Publishing metadata.** `pyproject.toml` has no `license`, `authors`, `classifiers`,
+  `keywords` or `[project.urls]`, and the existing `LICENSE` file is not declared. This is the
+  last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already
+  belongs to someone else (`maydali28/memcp` v0.3.0, same niche), and `universal-memory-mcp` is
+  currently unclaimed.
+- [ ] **Verify SonarCloud PR decoration survived the repo rename.** The project key was
+  deliberately left as `adamkwhite_claude-memory-mcp` (changing it orphans the project and its
+  history), but the GitHub app's repo binding may need refreshing. The next PR's Sonar check
+  answers this; if it fails to decorate it's a re-bind in SonarCloud settings, not a code fix.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time
   repair would take the whole index with it. If built, it must be explicitly invoked, never
-  automatic. `.agent-notes/prune-stale-index-entries.py` is the throwaway version of this.
-- [ ] Decide the fate of four unmerged branches: `chore/strict-lint-manual` (#168 closed),
-  `feature/log-sampling-15` (#159 closed), `feature/staged-pipeline` (#55 closed),
-  `dependabot/sonarqube-v6` (no PR). Plus local-only `cleanup/remove-test-directories`
-  (43 commits, never pushed, 14 months old).
-- [ ] `migrate_to_sqlite.py::verify_migration` still compares counts (`counts_match`) and sits
-  behind an MCP tool disabled at `server_fastmcp.py:413`. Either point it at
-  `check_consistency()` or delete it — as written it can report a drifted store as healthy.
+  automatic. In practice `python src/migrate_to_sqlite.py --storage-path <store> --use-data-dir`
+  already *is* the orphan-file repair — it upserts every `index.json` entry into SQLite and is
+  idempotent. Used successfully on the work machine's store (5 orphans → 0). A first-class
+  `--repair` would mostly be ergonomics over that.
 
 ## Recent Session (April 18, 2026) ✅ COMPLETED
 
