@@ -202,46 +202,6 @@ wheels = [
 ]
 
 [[package]]
-name = "claude-memory-mcp"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiofiles" },
-    { name = "jsonschema" },
-    { name = "mcp", extra = ["cli"] },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "psutil" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "types-aiofiles" },
-]
-lint = [
-    { name = "mypy" },
-    { name = "ruff" },
-    { name = "types-aiofiles" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiofiles", specifier = "==25.1.0" },
-    { name = "jsonschema", specifier = "==4.26.0" },
-    { name = "mcp", extras = ["cli"], specifier = "==1.29.0" },
-    { name = "mypy", marker = "extra == 'lint'", specifier = "==2.3.0" },
-    { name = "psutil", marker = "extra == 'dev'", specifier = "==7.2.2" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = "==9.1.1" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = "==1.4.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = "==7.1.0" },
-    { name = "ruff", marker = "extra == 'lint'", specifier = "==0.16.1" },
-    { name = "types-aiofiles", marker = "extra == 'dev'", specifier = "==25.1.0.20260518" },
-    { name = "types-aiofiles", marker = "extra == 'lint'", specifier = "==25.1.0.20260518" },
-]
-provides-extras = ["dev", "lint"]
-
-[[package]]
 name = "click"
 version = "8.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1378,6 +1338,46 @@ sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
 ]
+
+[[package]]
+name = "universal-memory-mcp"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiofiles" },
+    { name = "jsonschema" },
+    { name = "mcp", extra = ["cli"] },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "psutil" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "types-aiofiles" },
+]
+lint = [
+    { name = "mypy" },
+    { name = "ruff" },
+    { name = "types-aiofiles" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = "==25.1.0" },
+    { name = "jsonschema", specifier = "==4.26.0" },
+    { name = "mcp", extras = ["cli"], specifier = "==1.29.0" },
+    { name = "mypy", marker = "extra == 'lint'", specifier = "==2.3.0" },
+    { name = "psutil", marker = "extra == 'dev'", specifier = "==7.2.2" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = "==9.1.1" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = "==1.4.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = "==7.1.0" },
+    { name = "ruff", marker = "extra == 'lint'", specifier = "==0.16.1" },
+    { name = "types-aiofiles", marker = "extra == 'dev'", specifier = "==25.1.0.20260518" },
+    { name = "types-aiofiles", marker = "extra == 'lint'", specifier = "==25.1.0.20260518" },
+]
+provides-extras = ["dev", "lint"]
 
 [[package]]
 name = "uvicorn"

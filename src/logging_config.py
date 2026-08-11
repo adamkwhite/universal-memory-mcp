@@ -107,7 +107,7 @@ class CorrelationIdFilter(logging.Filter):
 # logger — never for records propagating up from a child logger to the
 # parent's handlers (Handler.handle() calls the handler's own filters, but
 # nothing re-runs the ancestor Logger.filter() chain). This app logs
-# through child loggers (get_logger("claude_memory_mcp.server") etc.), so a
+# through child loggers (get_logger("universal_memory_mcp.server") etc.), so a
 # logger-level CorrelationIdFilter silently never fires for real traffic —
 # that was the bug. A record factory is called by logging.Logger.makeRecord
 # for *every* record, on *every* logger in the process (including
@@ -201,7 +201,7 @@ class JSONFormatter(logging.Formatter):
     - context: Optional structured context data (if present in record.context)
 
     Example output:
-    {"timestamp": "2025-01-15T10:30:45.123Z", "level": "INFO", "logger": "claude_memory_mcp",
+    {"timestamp": "2025-01-15T10:30:45.123Z", "level": "INFO", "logger": "universal_memory_mcp",
      "function": "add_conversation", "line": 145, "message": "Added conversation successfully",
      "context": {"conversation_id": "abc123", "topics": ["python", "mcp"]}}
     """
@@ -307,7 +307,7 @@ def _get_log_format(config: "Config | None" = None) -> str:
     valid_formats = ["json", "text"]
     if log_format not in valid_formats:
         # Log warning for invalid value and default to text
-        logger = logging.getLogger("claude_memory_mcp")
+        logger = logging.getLogger("universal_memory_mcp")
         logger.warning(
             f"Invalid CLAUDE_MCP_LOG_FORMAT value: '{log_format}'. "
             f"Valid values are: {', '.join(valid_formats)}. Defaulting to 'text'."
@@ -359,7 +359,7 @@ def setup_logging(
         CLAUDE_MCP_LOG_FORMAT: Log format (json|text). Default: text
     """
     # Get logger
-    logger = logging.getLogger("claude_memory_mcp")
+    logger = logging.getLogger("universal_memory_mcp")
     logger.setLevel(getattr(logging, log_level.upper()))
 
     # Clear existing handlers/filters (setup_logging may be called more than
@@ -372,7 +372,7 @@ def setup_logging(
     _install_correlation_id_record_factory()
 
     # Sampling MUST be attached per-handler, not on the logger: this app
-    # logs through child loggers (get_logger("claude_memory_mcp.<name>")),
+    # logs through child loggers (get_logger("universal_memory_mcp.<name>")),
     # and a logger's own filters never run for records that reach its
     # handlers via propagation from a descendant logger. One shared
     # instance is reused across handlers to avoid double-counting.
@@ -425,7 +425,7 @@ def setup_logging(
     return logger
 
 
-def get_logger(name: str = "claude_memory_mcp") -> logging.Logger:
+def get_logger(name: str = "universal_memory_mcp") -> logging.Logger:
     """Get a logger instance with the given name"""
     return logging.getLogger(name)
 
@@ -467,7 +467,7 @@ def log_security_event(event_type: str, details: str, severity: str = "WARNING")
         import re
         from pathlib import Path
 
-        logger = get_logger("claude_memory_mcp.security")
+        logger = get_logger("universal_memory_mcp.security")
         level = getattr(logging, severity.upper())
 
         # Sanitize event_type and details to prevent log injection
@@ -515,7 +515,7 @@ def log_validation_failure(field: str, value: str, reason: str):
     try:
         import re
 
-        logger = get_logger("claude_memory_mcp.validation")
+        logger = get_logger("universal_memory_mcp.validation")
         # Comprehensive sanitization to prevent log injection
         safe_value = str(value)[:100]
         # Remove all control characters except safe whitespace
@@ -549,7 +549,7 @@ def log_file_operation(operation: str, file_path: str, success: bool, **details)
         import re
         from pathlib import Path
 
-        logger = get_logger("claude_memory_mcp.files")
+        logger = get_logger("universal_memory_mcp.files")
         status = "SUCCESS" if success else "FAILED"
 
         # Sanitize file path for logging (use relative path when possible)
