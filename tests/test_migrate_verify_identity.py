@@ -130,3 +130,84 @@ async def test_index_and_topics_files_are_not_counted_as_conversations(server, s
 
     assert verification["json_count"] == 1
     assert verification["contents_match"] is True
+
+
+class TestCliGate:
+    """main()'s exit code is the actual product of this change.
+
+    The old gate was ``counts_match and search_test_passed``, so a store with
+    equal totals and zero overlap printed "Migration verified successfully!"
+    and exited 0. ``--verify-only`` returns before the gate, so these drive
+    the full path and stub verify_migration to place the store in an exact
+    state — the gate is the unit under test, not the scan.
+    """
+
+    @staticmethod
+    def _run(monkeypatch, storage, verification):
+        import migrate_to_sqlite
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["migrate_to_sqlite.py", "--storage-path", str(storage), "--use-data-dir"],
+        )
+        monkeypatch.setattr(
+            migrate_to_sqlite.ConversationMigrator,
+            "migrate_all_conversations",
+            lambda _self: {"migrated": 0},
+        )
+        monkeypatch.setattr(
+            migrate_to_sqlite.ConversationMigrator,
+            "verify_migration",
+            lambda _self: verification,
+        )
+        return migrate_to_sqlite.main()
+
+    def test_equal_counts_over_disjoint_sets_now_exits_nonzero(self, storage, monkeypatch, capsys):
+        """The regression case: the old gate passed this exact dict."""
+        verification = {
+            "counts_match": True,  # what the old gate consulted
+            "contents_match": False,  # what it should have consulted
+            "missing_from_index": 1,
+            "missing_from_disk": 1,
+            "search_test_passed": True,
+        }
+
+        with pytest.raises(SystemExit) as exit_info:
+            self._run(monkeypatch, storage, verification)
+
+        assert exit_info.value.code == 1
+        out = capsys.readouterr().out
+        assert "verification failed" in out.lower()
+        assert "1 file(s) not in the index" in out
+        assert "1 indexed row(s) with no file" in out
+
+    def test_matching_contents_exits_clean(self, storage, monkeypatch, capsys):
+        verification = {
+            "counts_match": True,
+            "contents_match": True,
+            "missing_from_index": 0,
+            "missing_from_disk": 0,
+            "search_test_passed": True,
+        }
+
+        self._run(monkeypatch, storage, verification)
+
+        assert "verified successfully" in capsys.readouterr().out
+
+    def test_broken_search_still_fails_even_when_contents_match(self, storage, monkeypatch, capsys):
+        """contents_match replaced counts_match; it did not replace the
+        search smoke test, which is the check that would have caught the
+        FTS5 desync in #190."""
+        verification = {
+            "counts_match": True,
+            "contents_match": True,
+            "missing_from_index": 0,
+            "missing_from_disk": 0,
+            "search_test_passed": False,
+        }
+
+        with pytest.raises(SystemExit) as exit_info:
+            self._run(monkeypatch, storage, verification)
+
+        assert exit_info.value.code == 1
