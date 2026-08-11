@@ -146,6 +146,52 @@ async def test_get_search_stats_carries_the_report(server):
 
 
 @pytest.mark.asyncio
+async def test_unreadable_index_json_does_not_raise(server):
+    """A corrupt index.json must degrade to "nothing indexed", not crash."""
+    await _add(server, "First")
+    server.index_file.write_text("{not json")
+
+    report = server.check_consistency()
+
+    assert report["index_entries"] == 0
+    assert report["index_missing"] == 1
+    assert report["db_rows"] == 1, "SQLite is unaffected by a corrupt index.json"
+
+
+@pytest.mark.asyncio
+async def test_sqlite_disabled_reports_files_only(server):
+    """Without SQLite there is nothing to diff rows against."""
+    await _add(server, "First")
+    server.use_sqlite_search = False
+
+    report = server.check_consistency()
+
+    assert report["db_rows"] is None
+    assert report["orphan_files"] == 0
+    assert report["dangling_rows"] == 0
+    assert report["json_files"] == 1
+
+
+@pytest.mark.asyncio
+async def test_stats_survives_a_failing_consistency_scan(server, monkeypatch):
+    """The scan is diagnostics; it must never take down the stats call."""
+    monkeypatch.setattr(
+        server, "check_consistency", lambda: (_ for _ in ()).throw(OSError("storage unreachable"))
+    )
+
+    stats = await server.get_search_stats()
+
+    assert "storage unreachable" in stats["consistency_error"]
+    assert stats["search_engine"], "the rest of the stats still came back"
+
+
+def test_indexed_file_paths_survives_a_broken_database(server):
+    server.search_db.db_path = "/nonexistent/dir/search.db"
+
+    assert server.search_db.get_indexed_file_paths() == set()
+
+
+@pytest.mark.asyncio
 async def test_index_json_drift_is_reported_separately(server):
     """index.json is its own store and drifts independently of SQLite."""
     await _add(server, "First")
@@ -157,3 +203,56 @@ async def test_index_json_drift_is_reported_separately(server):
     assert report["index_missing"] == 1
     assert report["orphan_files"] == 0, "SQLite is still in sync; only index.json drifted"
     assert report["consistent"] is False
+
+
+class TestSearchStatsRendering:
+    """The MCP tool's presentation of the report.
+
+    Drift is only worth surfacing if the user actually sees it, so the
+    rendering is covered as its own surface rather than trusted.
+    """
+
+    @pytest.fixture
+    def tool(self, server, monkeypatch):
+        import server_fastmcp
+
+        monkeypatch.setattr(server_fastmcp, "memory_server", server)
+        return server_fastmcp.get_search_stats
+
+    @pytest.mark.asyncio
+    async def test_healthy_store_gets_one_line(self, tool, server):
+        await _add(server, "First")
+
+        response = await tool()
+
+        assert "Store Consistency: OK (1 files)" in response
+        assert "drift detected" not in response
+
+    @pytest.mark.asyncio
+    async def test_drift_is_broken_down_with_evidence(self, tool, server):
+        await _add(server, "Keeper")
+        orphan = (
+            server.conversations_path / "2026" / "01-january" / "conv_20260115_000000_4242.json"
+        )
+        orphan.parent.mkdir(parents=True, exist_ok=True)
+        orphan.write_text(json.dumps({"id": "conv_20260115_000000_4242", "title": "Orphan"}))
+
+        response = await tool()
+
+        assert "drift detected" in response
+        assert "1 files on disk missing from the search index" in response
+        assert "conv_20260115_000000_4242.json" in response, "sample path is the evidence"
+        # Categories at zero stay out of the way.
+        assert "indexed rows whose file is gone" not in response
+
+    @pytest.mark.asyncio
+    async def test_scan_failure_is_surfaced_not_swallowed(self, tool, server, monkeypatch):
+        monkeypatch.setattr(
+            server,
+            "check_consistency",
+            lambda: (_ for _ in ()).throw(OSError("storage unreachable")),
+        )
+
+        response = await tool()
+
+        assert "Consistency Check Error: storage unreachable" in response
