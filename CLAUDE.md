@@ -1,4 +1,4 @@
-# Claude Memory MCP - Universal AI Memory System
+# Universal Memory MCP - Universal AI Memory System
 
 ## Project Overview
 
@@ -7,8 +7,8 @@
 ## Current Status (August 11, 2026)
 
 **Branch**: `main`
-**Recent Work**: Store-integrity series (#190-#194) — see `todos.md` for the full write-up
-**Test Coverage**: 887 passed, 1 skipped (local suite, verified `pytest -q` August 11 2026); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Recent Work**: Store-integrity series (#190-#196) and the rename to `universal-memory-mcp` (#197) — see `todos.md`
+**Test Coverage**: 896 passed, 1 skipped (local suite, verified `pytest -q` August 11 2026); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
@@ -16,6 +16,22 @@
 > so this is a local-only papercut and not a regression.
 **Code Quality**: 9 code smells, 0 security hotspots (SonarCloud, verified via API); quality gate status OK
 **Architecture**: Importer/Exporter mirror pattern (`src/importers/` ↔ `src/exporters/`); `src/config.py` is the single source of configuration truth (env > file > profile > default)
+
+### Naming: the project was renamed, the runtime identifiers were not (#197)
+
+The repo, package and logger hierarchy are `universal-memory-mcp` / `universal_memory_mcp`.
+**Everything a running install depends on deliberately still says `claude`**, and must stay that
+way — each of these orphans working state if "tidied up" for consistency:
+
+| identifier | why it must not change |
+|---|---|
+| `~/claude-memory/`, `~/.claude-memory/` | orphans every existing install's conversations |
+| `CLAUDE_MEMORY_PATH`, `CLAUDE_MEMORY_DISABLE_SQLITE`, `CLAUDE_MCP_*` | existing setups go dead |
+| `FastMCP("claude-memory")` | the key in users' `claude_desktop_config.json` |
+| `sonar.projectKey=adamkwhite_claude-memory-mcp` + README badge URLs | SonarCloud-side identifier — editing it orphans the project and loses all history |
+| `claude-memory-mcp-venv` | the directory exists under that name; a venv cannot be moved without breaking the absolute paths inside its scripts |
+
+A find-and-replace across the repo will hit the last two. Don't.
 
 ### Store integrity — the bug class to watch for (August 2026)
 
@@ -68,7 +84,7 @@ guards this; if it fails, stop and fix it rather than working around it.
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 887 tests (887 passed, 1 skipped, verified `pytest -q` August 11 2026)
+- **pytest**: Comprehensive testing framework with 896 tests (896 passed, 1 skipped, verified `pytest -q` August 11 2026)
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -320,7 +336,7 @@ This prevents back-and-forth in PRs due to test failures.
   ```bash
   source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src --cov-report=term -v
   ```
-- [ ] **2. Verify All Tests Pass** (expect 887+ passing tests, 1 skipped — verified August 11 2026)
+- [ ] **2. Verify All Tests Pass** (expect 896+ passing tests, 1 skipped — verified August 11 2026)
 - [ ] **3. Check Coverage Baseline** (expect ≥88% coverage per SonarCloud, not local `.coverage`)
 - [ ] **4. Test Supporting Scripts** (if modified any scripts/ files)
 - [ ] **5. Validate Async Compatibility** (if modified async methods)
