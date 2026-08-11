@@ -122,7 +122,7 @@ class TestLoggerHelpers:
     def test_get_logger_default_name(self):
         """Test get_logger with default name"""
         logger = get_logger()
-        assert logger.name == "claude_memory_mcp"
+        assert logger.name == "universal_memory_mcp"
 
     @patch("logging_config.get_logger")
     def test_log_function_call(self, mock_get_logger):

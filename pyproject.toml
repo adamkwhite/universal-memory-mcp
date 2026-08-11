@@ -1,7 +1,7 @@
 [project]
-name = "claude-memory-mcp"
+name = "universal-memory-mcp"
 version = "0.1.0"
-description = "A Model Context Protocol server for searchable local storage of Claude conversation history"
+description = "A Model Context Protocol server for searchable local storage of AI conversation history — Claude, ChatGPT, Cursor, and custom formats"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

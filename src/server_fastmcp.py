@@ -99,7 +99,7 @@ class FastMCPConversationMemoryServer(CoreMemoryServer):
         # Initialize logging using the (validated) Config so log_format /
         # log_level / console_output flow from the same source.
         init_default_logging(self.config)
-        self.fastmcp_logger = get_logger("claude_memory_mcp.server")
+        self.fastmcp_logger = get_logger("universal_memory_mcp.server")
 
         log_function_call(
             "FastMCPConversationMemoryServer.__init__",

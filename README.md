@@ -5,13 +5,13 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
 [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
 
-# Claude Memory MCP — Universal AI Conversation Memory
+# Universal Memory MCP — AI Conversation Memory
 
-A Model Context Protocol (MCP) server that provides persistent, searchable conversation memory across multiple AI platforms. Store, search, and retrieve conversation history with sub-millisecond full-text search powered by SQLite FTS5.
+A Model Context Protocol (MCP) server that provides persistent, searchable conversation memory across multiple AI platforms. Store, search, and retrieve conversation history with fast full-text search powered by SQLite FTS5.
 
 ## Features
 
-- 🔍 **Sub-millisecond full-text search** via SQLite FTS5 with relevance ranking
+- 🔍 **Fast full-text search** via SQLite FTS5 with relevance ranking — ~10x faster than a linear scan ([measured](#performance))
 - 🏷️ **Automatic topic extraction** — 574+ unique topics across 2,000+ associations
 - 📊 **Weekly summaries** with insights and patterns
 - 🗃️ **Organized file storage** by date and topic
@@ -22,7 +22,7 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 
 ### Prerequisites
 
-- Python 3.11+ (tested with 3.11.12)
+- Python 3.10+ (CI runs 3.14)
 - Ubuntu/WSL environment recommended
 - Claude Desktop (for MCP integration)
 
@@ -33,22 +33,22 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 **Quick Install** - Copy and paste this into Claude Code:
 
 ```bash
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/claude-memory-mcp && python3 src/server_fastmcp.py"
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/server_fastmcp.py"
 ```
 
-**Important**: Replace `$HOME/Code/claude-memory-mcp` with the actual path where you cloned this repository.
+**Important**: Replace `$HOME/Code/universal-memory-mcp` with the actual path where you cloned this repository.
 
 **Examples for different locations:**
 
 ```bash
-# If cloned to ~/Code/claude-memory-mcp (default)
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/claude-memory-mcp && python3 src/server_fastmcp.py"
+# If cloned to ~/Code/universal-memory-mcp (default)
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/server_fastmcp.py"
 
-# If cloned to ~/projects/claude-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/projects/claude-memory-mcp && python3 src/server_fastmcp.py"
+# If cloned to ~/projects/universal-memory-mcp
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/projects/universal-memory-mcp && python3 src/server_fastmcp.py"
 
-# If cloned to ~/dev/claude-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/dev/claude-memory-mcp && python3 src/server_fastmcp.py"
+# If cloned to ~/dev/universal-memory-mcp
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/dev/universal-memory-mcp && python3 src/server_fastmcp.py"
 ```
 
 **What this does:**
@@ -65,8 +65,8 @@ Documentation: https://code.claude.com/docs/en/mcp
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/claude-memory-mcp.git
-   cd claude-memory-mcp
+   git clone https://github.com/adamkwhite/universal-memory-mcp.git
+   cd universal-memory-mcp
    ```
 
 2. **Set up virtual environment:**
@@ -166,8 +166,8 @@ Add to your Claude Desktop MCP config:
   "mcpServers": {
     "claude-memory": {
       "command": "python",
-      "args": ["/absolute/path/to/claude-memory-mcp/src/server_fastmcp.py"],
-      "cwd": "/absolute/path/to/claude-memory-mcp"
+      "args": ["/absolute/path/to/universal-memory-mcp/src/server_fastmcp.py"],
+      "cwd": "/absolute/path/to/universal-memory-mcp"
     }
   }
 }
@@ -272,7 +272,7 @@ See `docs/json-logging.md` for detailed JSON logging documentation.
 ## File Structure
 
 ```
-claude-memory-mcp/
+universal-memory-mcp/
 ├── src/
 │   ├── server_fastmcp.py       # Main MCP server
 │   ├── conversation_memory.py  # Core memory engine + SQLite FTS5
@@ -391,7 +391,7 @@ pip install mcp[cli]  # Include CLI extras
 
 ### System Requirements
 
-- **Python**: 3.11+ (tested with 3.11.12)
+- **Python**: 3.10+ (CI runs 3.14)
 - **Disk Space**: ~10MB per 100 conversations
 - **Memory**: <100MB RAM usage
 - **OS**: Ubuntu/WSL recommended, macOS/Windows compatible

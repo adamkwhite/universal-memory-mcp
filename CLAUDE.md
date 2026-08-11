@@ -86,7 +86,7 @@ guards this; if it fails, stop and fix it rather than working around it.
 **As of June 2025, the project uses a consolidated data/ directory structure:**
 
 ```
-claude-memory-mcp/
+universal-memory-mcp/
 ├── data/                    # Consolidated application data
 │   ├── conversations/       # Local conversation storage
 │   ├── summaries/          # Weekly summary storage
@@ -200,7 +200,7 @@ pip install pytest pytest-cov pytest-asyncio
 - Target: 90%+ coverage maintained through layered testing approach
 
 **PR Quality Gate Enforcement:**
-- All PRs run 5 required status checks: `Quick Validation`, `Tests & SonarQube Analysis`, `performance-tests`, `performance-comparison`, `Analyze (python)` (wired as required checks on branch protection alongside the `ci/mirror-job-agent` CI rework — verify current state with `gh api repos/adamkwhite/claude-memory-mcp/rulesets/5957219`)
+- All PRs run 5 required status checks: `Quick Validation`, `Tests & SonarQube Analysis`, `performance-tests`, `performance-comparison`, `Analyze (python)` (wired as required checks on branch protection alongside the `ci/mirror-job-agent` CI rework — verify current state with `gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219`)
 - `Tests & SonarQube Analysis` fails the PR if the SonarCloud quality gate is red. The gate ("Sonar way", verified via the SonarCloud API) requires coverage on new code ≥ **80%**, not 90% as this doc previously (incorrectly) claimed — also new duplicated lines ≤ 3% and A ratings on new security/reliability/maintainability
 - Draft PRs skip all 5 checks until flipped ready (`gh pr ready`); a skipped required check reports as passing, so a draft never blocks merge, it just hasn't been checked yet
 
@@ -646,8 +646,8 @@ Add to Claude Desktop MCP configuration:
   "mcpServers": {
     "claude-memory": {
       "command": "python",
-      "args": ["/absolute/path/to/claude-memory-mcp/src/server_fastmcp.py"],
-      "cwd": "/absolute/path/to/claude-memory-mcp"
+      "args": ["/absolute/path/to/universal-memory-mcp/src/server_fastmcp.py"],
+      "cwd": "/absolute/path/to/universal-memory-mcp"
     }
   }
 }

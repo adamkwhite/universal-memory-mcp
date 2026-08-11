@@ -5,8 +5,8 @@ This file exists because PR #157 (correlation IDs) and PR #160 (log
 sampling) each shipped with unit tests for their filter *classes* only
 (instantiate the filter, call .filter(record) directly) and never asserted
 that a record survives the REAL configured logger end-to-end. Both filters
-were attached to the "claude_memory_mcp" logger itself, but the app logs
-through CHILD loggers (get_logger("claude_memory_mcp.server") etc.).
+were attached to the "universal_memory_mcp" logger itself, but the app logs
+through CHILD loggers (get_logger("universal_memory_mcp.server") etc.).
 Python only consults a logger's own filters for records it emits directly —
 never for records propagating up from a descendant logger to the parent's
 handlers. The result: every child-logger record hit the default TEXT
@@ -53,7 +53,7 @@ class TestCorrelationIdEndToEnd:
         setup_logging(log_file=str(log_file), console_output=False)
 
         set_correlation_id("e2e-test-id")
-        child_logger = get_logger("claude_memory_mcp.server")
+        child_logger = get_logger("universal_memory_mcp.server")
         child_logger.info("child logger message")
 
         # No "--- Logging error ---" / traceback should have been printed
@@ -85,7 +85,7 @@ class TestSamplingEndToEnd:
         cfg = Config(log_sample_rates={"noisy": rate})
         setup_logging(config=cfg, log_file=str(log_file), console_output=False)
 
-        child_logger = get_logger("claude_memory_mcp.server")
+        child_logger = get_logger("universal_memory_mcp.server")
         total = 50
         for i in range(total):
             child_logger.info(f"noisy record {i}", extra={"context": {"type": "noisy"}})
@@ -102,7 +102,7 @@ class TestSamplingEndToEnd:
         cfg = Config(log_sample_rates={"noisy": 1000})
         setup_logging(config=cfg, log_file=str(log_file), console_output=False)
 
-        child_logger = get_logger("claude_memory_mcp.server")
+        child_logger = get_logger("universal_memory_mcp.server")
         for i in range(10):
             child_logger.warning(f"warning {i}", extra={"context": {"type": "noisy"}})
             child_logger.error(f"error {i}", extra={"context": {"type": "noisy"}})
@@ -138,7 +138,7 @@ class TestNoDoubleCountingAcrossHandlers:
         # Exactly one shared instance, not one-per-handler.
         assert len(sampling_filters) == 1
 
-        child_logger = get_logger("claude_memory_mcp.server")
+        child_logger = get_logger("universal_memory_mcp.server")
         total = 40
         for i in range(total):
             child_logger.info(f"noisy record {i}", extra={"context": {"type": "noisy"}})
@@ -158,7 +158,7 @@ def demo() -> None:
         log_file = Path(d) / "demo.log"
         setup_logging(log_file=str(log_file), console_output=False)
         set_correlation_id("demo-id")
-        get_logger("claude_memory_mcp.server").info("demo message")
+        get_logger("universal_memory_mcp.server").info("demo message")
         contents = log_file.read_text()
         assert "demo message" in contents, "child-logger record was dropped"
         assert "demo-id" in contents, "correlation id missing from output"
