@@ -20,6 +20,10 @@ from search_database import SearchDatabase
 INDEX_JSON_FILENAME = "index.json"
 TOPICS_JSON_FILENAME = "topics.json"
 
+# Example paths reported per drift direction — enough to start investigating,
+# not enough to bury the verification output.
+VERIFY_SAMPLE_LIMIT = 5
+
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent))
 
@@ -197,19 +201,34 @@ class ConversationMigrator:
             return False
 
     def verify_migration(self) -> dict[str, Any]:
-        """Verify migration by comparing counts and testing search."""
+        """Verify migration by comparing the two stores by identity.
+
+        This used to report ``counts_match`` from ``sqlite_count ==
+        json_count`` and ``main()`` printed "Migration verified
+        successfully!" on the strength of it. Equal totals are not equal
+        sets: a store with one unmigrated file and one stale row has matching
+        counts and shares no members. That is not hypothetical — a live store
+        was found holding 31 files no index row referenced, and this check
+        would have called it verified.
+
+        ``contents_match`` is therefore the verdict; ``counts_match`` is kept
+        only because it is cheap and shows *how* a store drifted (equal counts
+        with unequal contents means writes were lost in both directions).
+        """
         self.logger.info("Verifying migration...")
 
         try:
-            # Count conversations in SQLite
-            sqlite_count = self.search_db.get_conversation_count()
+            # Compare the same identities SQLite stores: paths relative to
+            # storage_path, which is the basis add_conversation writes.
+            json_files = {
+                str(f.relative_to(self.storage_path))
+                for f in self.conversations_path.rglob("*.json")
+                if f.name not in (INDEX_JSON_FILENAME, TOPICS_JSON_FILENAME)
+            }
+            indexed = self.search_db.get_indexed_file_paths()
 
-            # Count JSON files
-            json_files = list(self.conversations_path.rglob("*.json"))
-            conversation_files = [
-                f for f in json_files if f.name not in [INDEX_JSON_FILENAME, TOPICS_JSON_FILENAME]
-            ]
-            json_count = len(conversation_files)
+            missing_from_index = sorted(json_files - indexed)
+            missing_from_disk = sorted(indexed - json_files)
 
             # Get database stats
             db_stats = self.search_db.get_conversation_stats()
@@ -221,9 +240,16 @@ class ConversationMigrator:
             )
 
             verification = {
-                "sqlite_count": sqlite_count,
-                "json_count": json_count,
-                "counts_match": sqlite_count == json_count,
+                "sqlite_count": len(indexed),
+                "json_count": len(json_files),
+                "counts_match": len(indexed) == len(json_files),
+                "contents_match": not missing_from_index and not missing_from_disk,
+                "missing_from_index": len(missing_from_index),
+                "missing_from_disk": len(missing_from_disk),
+                "samples": {
+                    "missing_from_index": missing_from_index[:VERIFY_SAMPLE_LIMIT],
+                    "missing_from_disk": missing_from_disk[:VERIFY_SAMPLE_LIMIT],
+                },
                 "database_stats": db_stats,
                 "search_test_passed": search_working,
                 "search_results_count": len(test_results) if search_working else 0,
@@ -302,10 +328,16 @@ def main():
     verification = migrator.verify_migration()
     print(json.dumps(verification, indent=2))
 
-    if verification.get("counts_match") and verification.get("search_test_passed"):
+    # Gate on contents_match, not counts_match: equal totals over unequal sets
+    # is precisely the state this check used to pass.
+    if verification.get("contents_match") and verification.get("search_test_passed"):
         print("\n✅ Migration verified successfully!")
     else:
         print("\n❌ Migration verification failed!")
+        if verification.get("missing_from_index"):
+            print(f"   {verification['missing_from_index']} file(s) not in the index")
+        if verification.get("missing_from_disk"):
+            print(f"   {verification['missing_from_disk']} indexed row(s) with no file")
         sys.exit(1)
 
 
