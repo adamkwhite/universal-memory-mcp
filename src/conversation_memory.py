@@ -1070,9 +1070,74 @@ class ConversationMemoryServer:
 
         return "\n".join(summary_parts)
 
+    # Only this many example paths are reported per drift category — enough to
+    # start investigating, not enough to flood an MCP response.
+    CONSISTENCY_SAMPLE_LIMIT = 5
+
+    def check_consistency(self) -> dict[str, Any]:
+        """Compare the conversation stores by identity and report the drift.
+
+        A conversation lives in three places: its JSON file on disk, an entry
+        in ``index.json``, and a row in SQLite (which in turn backs the FTS5
+        index). Nothing kept them honest against each other. The checks that
+        existed compared *totals* — ``verify_migration``'s ``counts_match``,
+        and the old ``_sync_index_from_files`` guard fixed in #193 — and equal
+        totals over non-equal sets is precisely how drift stayed invisible.
+        A live store was found holding 31 JSON files that no index row
+        referenced; a count comparison called it healthy.
+
+        This is deliberately **read-only**. Re-indexing an orphaned file is
+        additive and safe, but deleting a row whose file is missing is not:
+        a mis-set ``CLAUDE_MEMORY_PATH`` or an unmounted storage directory
+        makes *every* file look missing, and a repair wired into startup would
+        take the whole index with it. Report here; let repair be explicit.
+        """
+        on_disk = {
+            str(f.relative_to(self.storage_path))
+            for f in self.conversations_path.rglob("conv_*.json")
+        }
+
+        try:
+            with open(self.index_file) as f:
+                index_entries = json.load(f).get("conversations", [])
+            in_index = {c["file_path"] for c in index_entries if c.get("file_path")}
+        except (OSError, ValueError, KeyError, TypeError):
+            index_entries = []
+            in_index = set()
+
+        report: dict[str, Any] = {
+            "json_files": len(on_disk),
+            "index_entries": len(index_entries),
+            "index_missing": sorted(on_disk - in_index),
+            "index_stale": sorted(in_index - on_disk),
+        }
+
+        if self.use_sqlite_search and self.search_db:
+            in_db = self.search_db.get_indexed_file_paths()
+            report["db_rows"] = len(in_db)
+            report["orphan_files"] = sorted(on_disk - in_db)
+            report["dangling_rows"] = sorted(in_db - on_disk)
+        else:
+            report["db_rows"] = None
+            report["orphan_files"] = []
+            report["dangling_rows"] = []
+
+        # Report counts, keep only a handful of paths as evidence.
+        samples = {}
+        for key in ("orphan_files", "dangling_rows", "index_missing", "index_stale"):
+            paths = report[key]
+            report[key] = len(paths)
+            if paths:
+                samples[key] = paths[: self.CONSISTENCY_SAMPLE_LIMIT]
+
+        report["consistent"] = not samples
+        if samples:
+            report["samples"] = samples
+        return report
+
     async def get_search_stats(self) -> dict[str, Any]:
         """Get search engine statistics and status."""
-        stats = {
+        stats: dict[str, Any] = {
             "sqlite_available": SQLITE_AVAILABLE,
             "sqlite_enabled": self.use_sqlite_search,
             "search_engine": ("sqlite_fts" if self.use_sqlite_search else "linear_json"),
@@ -1084,6 +1149,14 @@ class ConversationMemoryServer:
                 stats.update(db_stats)
             except Exception as e:  # noqa: BLE001 - read-only diagnostics endpoint: report sqlite_error rather than crash the stats call
                 stats["sqlite_error"] = str(e)
+
+        # Walks the store, so it is meaningfully more expensive than the rest
+        # of this call. Acceptable here because get_search_stats is invoked by
+        # a user asking after the store's health, not on the init path.
+        try:
+            stats["consistency"] = self.check_consistency()
+        except Exception as e:  # noqa: BLE001 - read-only diagnostics endpoint: a failed consistency scan must not take down the stats call
+            stats["consistency_error"] = str(e)
 
         return stats
 

@@ -404,6 +404,28 @@ async def get_search_stats() -> str:
         for type_info in stats["conversation_types"]:
             response += f"  - {type_info['type']}: {type_info['count']}\n"
 
+    # Only speak up about consistency when something is actually wrong — a
+    # healthy store gets one line, not a table of zeros.
+    consistency = stats.get("consistency")
+    if consistency and not consistency.get("consistent", True):
+        response += "\n⚠ Store Consistency — drift detected:\n"
+        labels = {
+            "orphan_files": "files on disk missing from the search index",
+            "dangling_rows": "indexed rows whose file is gone",
+            "index_missing": "files on disk missing from index.json",
+            "index_stale": "index.json entries whose file is gone",
+        }
+        for key, label in labels.items():
+            if consistency.get(key):
+                response += f"  - {consistency[key]} {label}\n"
+        for key, paths in consistency.get("samples", {}).items():
+            response += f"    e.g. {key}: {', '.join(paths)}\n"
+    elif consistency:
+        response += f"\n• Store Consistency: OK ({consistency['json_files']} files)\n"
+
+    if "consistency_error" in stats:
+        response += f"\nConsistency Check Error: {stats['consistency_error']}\n"
+
     if "sqlite_error" in stats:
         response += f"\nSQLite Error: {stats['sqlite_error']}\n"
 
