@@ -599,3 +599,19 @@ class SearchDatabase:
         except sqlite3.Error as e:
             self.logger.exception(f"Count query failed: {e}")
             return 0
+
+    def get_indexed_file_paths(self) -> set[str]:
+        """Return every ``file_path`` in the index, as stored (relative).
+
+        Counts are not enough to tell whether the index matches the files on
+        disk — equal totals over non-equal sets is exactly how the FTS5
+        desync (#190) and the index-sync drift (#193) both stayed invisible.
+        Callers that need to compare stores need the identities.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                return {row[0] for row in conn.execute("SELECT file_path FROM conversations")}
+
+        except sqlite3.Error as e:
+            self.logger.exception(f"file_path query failed: {e}")
+            return set()
