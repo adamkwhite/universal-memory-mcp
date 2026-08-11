@@ -4,13 +4,44 @@
 
 **Claude Memory MCP** is a universal conversation memory system that provides persistent storage and intelligent search across multiple AI platforms. Originally designed for Claude, it now supports ChatGPT, Cursor AI, and custom formats through an extensible architecture.
 
-## Current Status (April 18, 2026)
+## Current Status (August 11, 2026)
 
 **Branch**: `main`
-**Recent Work**: Universal Memory MCP parallel push — 8 PRs merged in one session (#109-#116)
-**Test Coverage**: 803 passed, 1 skipped (local suite, verified `pytest -q` July 2026); 88.1% overall coverage (SonarCloud, verified via API); ≥80% coverage required on new code
+**Recent Work**: Store-integrity series (#190-#194) — see `todos.md` for the full write-up
+**Test Coverage**: 887 passed, 1 skipped (local suite, verified `pytest -q` August 11 2026); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+
+> Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
+> Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
+> "No conversation files copied". CI generates it in `performance.yml`, and `build.yml` `--ignore`s that file,
+> so this is a local-only papercut and not a regression.
 **Code Quality**: 9 code smells, 0 security hotspots (SonarCloud, verified via API); quality gate status OK
 **Architecture**: Importer/Exporter mirror pattern (`src/importers/` ↔ `src/exporters/`); `src/config.py` is the single source of configuration truth (env > file > profile > default)
+
+### Store integrity — the bug class to watch for (August 2026)
+
+Three separate bugs in this repo were the same shape: **two stores agreeing on a total while
+disagreeing on contents.** Count comparisons cannot detect that, which is why each survived for
+months. When you touch anything that keeps two stores aligned, compare identities, not counts.
+
+- **#190** — `conversations_fts` is an external-content FTS5 table (`content='conversations'`), so
+  rowid alignment is the whole contract. Broken triggers plus `INSERT OR REPLACE` leaked one
+  orphaned index entry per re-saved conversation, and any `MATCH` hitting an orphan failed the
+  read-back — breaking **all** content search while tag/topic search kept working. Note the trap:
+  `PRAGMA integrity_check` returns `ok`, because the database file was never corrupt.
+- **#193** — `_sync_index_from_files` returned early when file count == index count, so swapping one
+  conversation for another left the replacement unindexed.
+- **#194** — `check_consistency()` now set-differences files / `index.json` / SQLite and reports
+  drift through `get_search_stats`. **Read-only by design**: never wire index repair into startup;
+  a mis-set `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing.
+
+Related: `migrate_to_sqlite.py::verify_migration` still compares counts and can report a drifted
+store as healthy. Don't trust it.
+
+**Tests must never touch the real store.** `tests/conftest.py` redirects `CLAUDE_MEMORY_PATH` to a
+temp dir at *module* scope — not in a fixture, because `server_fastmcp` builds its `memory_server`
+singleton at import time, before any fixture runs. Before #191 every suite run wrote live
+conversations into `~/claude-memory` (611 junk rows out of 1381). `tests/test_storage_isolation.py`
+guards this; if it fails, stop and fix it rather than working around it.
 
 ### Recent Major Implementations
 - ✅ **Centralized Configuration** (PRs #111, #116): `src/config.py` `Config` dataclass with env/file/profile precedence and validation, wired into `server_fastmcp.py`/`logging_config.py`/`path_utils.py`. Replaces scattered `os.getenv()` reads.
@@ -37,7 +68,7 @@
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 803 test cases (803 passed, 1 skipped, verified `pytest -q` July 2026)
+- **pytest**: Comprehensive testing framework with 887 tests (887 passed, 1 skipped, verified `pytest -q` August 11 2026)
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -289,7 +320,7 @@ This prevents back-and-forth in PRs due to test failures.
   ```bash
   source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src --cov-report=term -v
   ```
-- [ ] **2. Verify All Tests Pass** (expect 803+ passing tests, 1 skipped — verified July 2026)
+- [ ] **2. Verify All Tests Pass** (expect 887+ passing tests, 1 skipped — verified August 11 2026)
 - [ ] **3. Check Coverage Baseline** (expect ≥88% coverage per SonarCloud, not local `.coverage`)
 - [ ] **4. Test Supporting Scripts** (if modified any scripts/ files)
 - [ ] **5. Validate Async Compatibility** (if modified async methods)

@@ -2,6 +2,62 @@
 
 This file maintains persistent todos across Claude Code sessions.
 
+## Recent Session (August 10-11, 2026) ✅ COMPLETED
+
+**Store integrity — one bug class, found three times (PRs #190-#194)**
+
+All three were the same shape: **two stores agreeing on a total while disagreeing on
+contents.** Count comparisons cannot see it, which is why each hid for months.
+
+- [x] **#190** fix(search): keep the FTS5 index in sync with its external content table.
+  `conversations_fts` is `content='conversations'`, so rowid alignment is the entire contract.
+  All three maintenance triggers were written for a standalone FTS table (no explicit rowid on
+  insert; plain `DELETE`/`UPDATE` instead of the `'delete'` command form), and `add_conversation`
+  used `INSERT OR REPLACE`, which reassigns the rowid and — with `recursive_triggers` off, the
+  default — skips the AFTER DELETE trigger entirely. One orphaned index entry leaked per re-saved
+  conversation; any `MATCH` hitting an orphan failed the read-back and broke **all** content search
+  while tag/topic search kept working. `PRAGMA integrity_check` returns `ok` throughout, because
+  the base file was never corrupt. Same corruption had been papered over with manual rebuilds on
+  2026-05-24 and 2026-05-28. Adds `_repair_fts_desync` (init-time rebuild when docsize != row count).
+- [x] **#191** test: stop the suite writing into the developer's real memory store. Test modules
+  called the module-level MCP tool functions, which hit the `memory_server` singleton built at
+  import time from the real `~/claude-memory`. Every suite run ever wrote live conversations —
+  611 junk rows out of 1381 (44%). This was the engine feeding the desync above. Fixed via
+  `CLAUDE_MEMORY_PATH` redirect at **conftest module scope**; a fixture is too late, because the
+  test module's own `import server_fastmcp` is what constructs the singleton.
+- [x] **#193** fix(memory): index sync missed drift that nets to zero. `_sync_index_from_files`
+  short-circuited on `len(conv_files) <= len(indexed_ids)`. Delete one conversation and add
+  another and the totals stay equal, so the replacement was never written to `index.json`.
+  Now diffs by path, which is also cheaper than the old fallback.
+- [x] **#194** feat(search): report store drift by identity, not by count. `check_consistency()`
+  set-differences the three stores (files / `index.json` / SQLite) and surfaces orphan files,
+  dangling rows and index drift through `get_search_stats`. Found a real 643-entry `index.json`
+  drift on its first live run. Deliberately **read-only** — see the follow-up below.
+
+**Housekeeping in the same session**
+- [x] **#192** chore(deps): bump ruff to 0.16.1; excluded `*.md` because 0.16 began formatting
+  Python code blocks inside Markdown and was rewriting historical design docs. Supersedes #187.
+- [x] **#189** deps: cryptography 48.0.1 → 50.0.0.
+- [x] Purged 611 indexed junk rows + 31 unindexed orphan files from the live store, then pruned
+  643 stale `index.json` entries. All four stores now agree at 770. Backups in `.agent-notes/`.
+- [x] Generated the local benchmark dataset — the 6 long-standing local
+  `test_performance_benchmarks.py` failures were an empty dataset dir, not a code fault.
+- [x] Deleted 13 merged branches. Four unmerged ones deliberately left (see below).
+
+**Follow-ups this session opened**
+- [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
+  *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
+  `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time
+  repair would take the whole index with it. If built, it must be explicitly invoked, never
+  automatic. `.agent-notes/prune-stale-index-entries.py` is the throwaway version of this.
+- [ ] Decide the fate of four unmerged branches: `chore/strict-lint-manual` (#168 closed),
+  `feature/log-sampling-15` (#159 closed), `feature/staged-pipeline` (#55 closed),
+  `dependabot/sonarqube-v6` (no PR). Plus local-only `cleanup/remove-test-directories`
+  (43 commits, never pushed, 14 months old).
+- [ ] `migrate_to_sqlite.py::verify_migration` still compares counts (`counts_match`) and sits
+  behind an MCP tool disabled at `server_fastmcp.py:413`. Either point it at
+  `check_consistency()` or delete it — as written it can report a drifted store as healthy.
+
 ## Recent Session (April 18, 2026) ✅ COMPLETED
 
 **Universal Memory MCP — high-priority parallel push (PRs #109-#116, 8 PRs)**
@@ -183,7 +239,8 @@ answer before it's buildable. Captured here so they don't get silently implement
   - [x] Wire `Config.load()` into `server_fastmcp.py` / `logging_config.py` / `path_utils.py` (replace direct `os.getenv` calls) — PR #116
   - [ ] CLI commands for config management (`get`, `set`, `show`, `init`) — follow-up (todos 3.2.2)
   - [ ] Per-platform topic extraction patterns and date-format handling (todos 3.1.2 / 3.1.3) — follow-up
-  - [ ] Document configuration file format in README — follow-up
+  - [x] Document configuration file format in README — PR #154 (README "Config file" precedence
+    section and `~/.claude-memory/config.json` reference)
 - [x] **Add proper logging throughout the application** ✅ COMPLETED
   - ✅ PR #13: Implemented comprehensive logging system
   - ✅ Security-focused logging with log injection prevention
@@ -510,7 +567,8 @@ Transform this project from Claude-specific to universal AI assistant memory sys
 - [ ] 5.3.4 Add search result grouping by platform/model
 
 **5.4** Metadata Management
-- [ ] 5.4.1 Create metadata validation and sanitization
+- [x] 5.4.1 Create metadata validation and sanitization — PR #158: `validate_session_id`,
+  `validate_conversation_type`, `validate_tags`, `validate_custom_fields` in `src/validators.py`
 - [x] 5.4.2 Add metadata updating and editing capabilities
 - [x] 5.4.3 Implement metadata indexing for performance
 - [ ] 5.4.4 Add metadata export and reporting tools
