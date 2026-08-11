@@ -139,17 +139,43 @@ class ConversationMemoryServer:
             with open(self.index_file) as f:
                 index_data = json.load(f)
             indexed_ids = {c["id"] for c in index_data.get("conversations", [])}
+            indexed_paths = {
+                c.get("file_path")
+                for c in index_data.get("conversations", [])
+                if c.get("file_path")
+            }
         except (OSError, ValueError, KeyError, TypeError):
             indexed_ids = set()
+            indexed_paths = set()
             index_data = {
                 "conversations": [],
                 "last_updated": datetime.now().isoformat(),
             }
 
-        # Scan all conversation JSON files on disk
-        conv_files = list(self.conversations_path.rglob("conv_*.json"))
-        if len(conv_files) <= len(indexed_ids):
-            return  # Already in sync or no files to add
+        # Scan all conversation JSON files on disk.
+        #
+        # Narrow to files whose path is absent from index.json rather than
+        # comparing counts. The previous guard was
+        # ``if len(conv_files) <= len(indexed_ids): return``, which is wrong
+        # whenever drift nets to zero: delete one conversation and add
+        # another and the counts stay equal, so the new file was never
+        # indexed. Same failure shape as the FTS5 desync fixed in #190 —
+        # equal totals over non-equal sets.
+        #
+        # Diffing by path is also cheaper than the old code's fallback, which
+        # opened every conversation on disk once the guard let it through.
+        # ``conv_id`` lives inside the JSON, so a path-level filter is the
+        # most we can decide without reading; the id check in the loop stays
+        # as the authority. An index entry with no ``file_path`` (older
+        # format) just makes its file a candidate and costs one extra read
+        # before the id check skips it.
+        conv_files = [
+            f
+            for f in self.conversations_path.rglob("conv_*.json")
+            if str(f.relative_to(self.storage_path)) not in indexed_paths
+        ]
+        if not conv_files:
+            return  # Every file on disk is already indexed
 
         added = 0
         for conv_file in conv_files:
