@@ -892,6 +892,82 @@ class TestConversationMemoryServerDirect:
             second_sync = json.load(f)
         assert len(second_sync["conversations"]) == count_after_first
 
+    def _write_conv(self, server, folder, conv_id, title):
+        """Drop a conversation file on disk without going through add_conversation."""
+        date_folder = server.conversations_path / "2025" / folder
+        date_folder.mkdir(parents=True, exist_ok=True)
+        conv_file = date_folder / f"{conv_id}.json"
+        with open(conv_file, "w") as f:
+            json.dump(
+                {
+                    "id": conv_id,
+                    "title": title,
+                    "content": "Content",
+                    "date": "2025-04-01T12:00:00",
+                    "topics": ["test"],
+                    "created_at": "2025-04-01T12:00:00",
+                },
+                f,
+            )
+        return conv_file
+
+    def test_sync_index_from_files_detects_equal_count_drift(self, server):
+        """Drift that nets to zero must still be indexed.
+
+        The old guard was `if len(conv_files) <= len(indexed_ids): return`.
+        Delete one conversation and add another and the totals stay equal, so
+        the replacement was silently never indexed — equal totals over
+        non-equal sets, the same shape as the FTS5 desync in #190.
+        """
+        first = self._write_conv(server, "04-april", "conv_20250401_120000_1111", "First")
+        server._sync_index_from_files()
+
+        with open(server.index_file) as f:
+            assert len(json.load(f)["conversations"]) == 1
+
+        # Swap one for one: file count and index count both stay at 1.
+        first.unlink()
+        self._write_conv(server, "04-april", "conv_20250402_120000_2222", "Replacement")
+
+        server._sync_index_from_files()
+
+        with open(server.index_file) as f:
+            indexed = {c["id"] for c in json.load(f)["conversations"]}
+        assert "conv_20250402_120000_2222" in indexed, (
+            "replacement conversation was never indexed — equal-count drift missed"
+        )
+
+    def test_sync_index_from_files_handles_entry_without_file_path(self, server):
+        """Older index entries have no file_path; the id check must still hold.
+
+        Such an entry can't be matched by path, so its file becomes a
+        candidate and gets re-read — that must not produce a duplicate.
+        """
+        self._write_conv(server, "05-may", "conv_20250501_120000_3333", "Legacy")
+        with open(server.index_file, "w") as f:
+            json.dump(
+                {
+                    "conversations": [
+                        {
+                            "id": "conv_20250501_120000_3333",
+                            "title": "Legacy",
+                            "date": "2025-05-01T12:00:00",
+                            "topics": [],
+                            # no file_path — pre-dates the field
+                            "added_at": "2025-05-01T12:00:00",
+                        }
+                    ],
+                    "last_updated": "2025-05-01T12:00:00",
+                },
+                f,
+            )
+
+        server._sync_index_from_files()
+
+        with open(server.index_file) as f:
+            conversations = json.load(f)["conversations"]
+        assert len(conversations) == 1, "re-read of a file_path-less entry duplicated it"
+
     def test_sync_index_from_files_handles_corrupt_file(self, server):
         """Test that _sync_index_from_files skips corrupt JSON files"""
         date_folder = server.conversations_path / "2025" / "03-march"
