@@ -143,6 +143,19 @@ class JsonExporter(BaseExporter):
                 "conversation_count": 0,
             }
 
+        errors.extend(self._validate_conversation_entries(conversations))
+
+        return {
+            "valid": not errors,
+            "errors": errors,
+            "warnings": warnings,
+            "conversation_count": len(conversations),
+        }
+
+    @staticmethod
+    def _validate_conversation_entries(conversations: list[Any]) -> list[str]:
+        """Per-conversation universal-format checks. Returns error strings."""
+        errors: list[str] = []
         for idx, conv in enumerate(conversations):
             if not isinstance(conv, dict):
                 errors.append(f"Conversation {idx} is not an object")
@@ -152,13 +165,7 @@ class JsonExporter(BaseExporter):
                     errors.append(f"Conversation {idx} missing required field '{field_name}'")
             if "messages" in conv and not isinstance(conv["messages"], list):
                 errors.append(f"Conversation {idx} 'messages' must be a list")
-
-        return {
-            "valid": not errors,
-            "errors": errors,
-            "warnings": warnings,
-            "conversation_count": len(conversations),
-        }
+        return errors
 
     # ------------------------------------------------------------------
     # Internal helpers

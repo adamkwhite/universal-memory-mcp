@@ -635,45 +635,11 @@ class GenericImporter(BaseImporter):
             # Use entire data as content
             content = json.dumps(data, indent=2)
 
-        # Process messages if they exist
-        if messages and isinstance(messages, list):
-            processed_messages = []
-            for msg in messages:
-                if isinstance(msg, dict):
-                    role = (
-                        self._extract_field(msg, ["role", "speaker", "user", "author"]) or "unknown"
-                    )
-                    msg_content = self._extract_field(msg, ["content", "text", "message"]) or str(
-                        msg
-                    )
-
-                    message = self._create_message(
-                        role=self._normalize_role(role),
-                        content=msg_content,
-                        metadata={"original": msg},
-                    )
-                    processed_messages.append(message)
-            messages = processed_messages
-        else:
-            messages = []
+        messages = self._process_raw_messages(messages)
 
         # Generate content from messages if needed
         if not content and messages:
             content = self._combine_messages_to_content(messages)
-
-        # Pass-through universal metadata extraction.
-        # Generic importer accepts arbitrary dicts so we forward any
-        # known universal-metadata keys directly.
-        session_id = self._extract_field(data, ["session_id", "conversation_id"])
-        user_id = self._extract_field(data, ["user_id", "account_id", "owner_id"])
-        explicit_tags = self._extract_field(data, ["tags", "labels"])
-        tags = [str(t) for t in explicit_tags if t] if isinstance(explicit_tags, list) else []
-        explicit_type = self._extract_field(data, ["conversation_type", "type", "category"])
-        conversation_type = (
-            explicit_type if isinstance(explicit_type, str) and explicit_type else None
-        )
-        explicit_custom = self._extract_field(data, ["custom_fields", "extra", "extras"])
-        custom_fields = explicit_custom if isinstance(explicit_custom, dict) else {}
 
         return self.create_universal_conversation(
             platform_id=f"generic_{int(datetime.now().timestamp())}",
@@ -683,12 +649,55 @@ class GenericImporter(BaseImporter):
             date=datetime.now(),
             model="unknown",
             metadata={"original_keys": list(data.keys())},
-            session_id=session_id if isinstance(session_id, str) else None,
-            user_id=user_id if isinstance(user_id, str) else None,
-            tags=tags,
-            conversation_type=conversation_type,
-            custom_fields=custom_fields,
+            **self._extract_universal_metadata(data),
         )
+
+    def _process_raw_messages(self, messages: Any) -> list[dict[str, Any]]:
+        """Normalize an arbitrary messages value into universal message dicts.
+
+        Non-list input, or entries that are not dicts, are dropped.
+        """
+        if not (messages and isinstance(messages, list)):
+            return []
+
+        processed: list[dict[str, Any]] = []
+        for msg in messages:
+            if not isinstance(msg, dict):
+                continue
+            role = self._extract_field(msg, ["role", "speaker", "user", "author"]) or "unknown"
+            msg_content = self._extract_field(msg, ["content", "text", "message"]) or str(msg)
+            processed.append(
+                self._create_message(
+                    role=self._normalize_role(role),
+                    content=msg_content,
+                    metadata={"original": msg},
+                )
+            )
+        return processed
+
+    def _extract_universal_metadata(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Forward known universal-metadata keys out of an arbitrary dict.
+
+        The generic importer accepts any shape, so each value is type-checked
+        and falls back to a neutral default rather than being trusted.
+        """
+        session_id = self._extract_field(data, ["session_id", "conversation_id"])
+        user_id = self._extract_field(data, ["user_id", "account_id", "owner_id"])
+        explicit_tags = self._extract_field(data, ["tags", "labels"])
+        explicit_type = self._extract_field(data, ["conversation_type", "type", "category"])
+        explicit_custom = self._extract_field(data, ["custom_fields", "extra", "extras"])
+
+        return {
+            "session_id": session_id if isinstance(session_id, str) else None,
+            "user_id": user_id if isinstance(user_id, str) else None,
+            "tags": (
+                [str(t) for t in explicit_tags if t] if isinstance(explicit_tags, list) else []
+            ),
+            "conversation_type": (
+                explicit_type if isinstance(explicit_type, str) and explicit_type else None
+            ),
+            "custom_fields": explicit_custom if isinstance(explicit_custom, dict) else {},
+        }
 
     def _parse_list_as_conversation(self, data: list[Any]) -> dict[str, Any]:
         """Parse list as conversation - treat as messages array."""

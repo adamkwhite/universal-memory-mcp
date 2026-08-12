@@ -373,6 +373,33 @@ def _format_metadata_results(results: list, *, label: str, value: str) -> str:
     return response
 
 
+def _format_consistency_section(consistency: dict | None) -> str:
+    """Render the store-consistency section of the search-stats report.
+
+    Only speaks up when something is actually wrong — a healthy store gets one
+    line, not a table of zeros. Returns "" when no consistency data is present.
+    """
+    if not consistency:
+        return ""
+
+    if consistency.get("consistent", True):
+        return f"\n• Store Consistency: OK ({consistency['json_files']} files)\n"
+
+    labels = {
+        "orphan_files": "files on disk missing from the search index",
+        "dangling_rows": "indexed rows whose file is gone",
+        "index_missing": "files on disk missing from index.json",
+        "index_stale": "index.json entries whose file is gone",
+    }
+    section = "\n⚠ Store Consistency — drift detected:\n"
+    for key, label in labels.items():
+        if consistency.get(key):
+            section += f"  - {consistency[key]} {label}\n"
+    for key, paths in consistency.get("samples", {}).items():
+        section += f"    e.g. {key}: {', '.join(paths)}\n"
+    return section
+
+
 @mcp.tool()
 async def get_search_stats() -> str:
     """Get search engine statistics and performance information"""
@@ -404,24 +431,7 @@ async def get_search_stats() -> str:
         for type_info in stats["conversation_types"]:
             response += f"  - {type_info['type']}: {type_info['count']}\n"
 
-    # Only speak up about consistency when something is actually wrong — a
-    # healthy store gets one line, not a table of zeros.
-    consistency = stats.get("consistency")
-    if consistency and not consistency.get("consistent", True):
-        response += "\n⚠ Store Consistency — drift detected:\n"
-        labels = {
-            "orphan_files": "files on disk missing from the search index",
-            "dangling_rows": "indexed rows whose file is gone",
-            "index_missing": "files on disk missing from index.json",
-            "index_stale": "index.json entries whose file is gone",
-        }
-        for key, label in labels.items():
-            if consistency.get(key):
-                response += f"  - {consistency[key]} {label}\n"
-        for key, paths in consistency.get("samples", {}).items():
-            response += f"    e.g. {key}: {', '.join(paths)}\n"
-    elif consistency:
-        response += f"\n• Store Consistency: OK ({consistency['json_files']} files)\n"
+    response += _format_consistency_section(stats.get("consistency"))
 
     if "consistency_error" in stats:
         response += f"\nConsistency Check Error: {stats['consistency_error']}\n"
