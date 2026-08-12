@@ -330,6 +330,50 @@ class ConversationMemoryServer:
 
         return found_topics[:10]  # Limit to top 10 topics
 
+    @staticmethod
+    def _resolve_conversation_date(conversation_date: str | None) -> datetime:
+        """Parse an ISO date, falling back to now() on absence or bad input."""
+        if not conversation_date:
+            return datetime.now()
+        try:
+            return datetime.fromisoformat(conversation_date.replace("Z", "+00:00"))
+        except ValueError:
+            return datetime.now()
+
+    @staticmethod
+    def _derive_title(content: str) -> str:
+        """Title from the first line, truncated to 50 chars with an ellipsis."""
+        lines = content.strip().split("\n")
+        first_line = lines[0] if lines else content
+        return first_line[:50] + "..." if len(first_line) > 50 else first_line
+
+    @staticmethod
+    def _optional_metadata(
+        *,
+        session_id: str | None,
+        user_id: str | None,
+        tags: list[str] | None,
+        conversation_type: str | None,
+        custom_fields: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Universal metadata keys, omitted when empty.
+
+        Only non-empty values are returned so legacy JSON files keep the same
+        shape for existing users.
+        """
+        metadata: dict[str, Any] = {}
+        if session_id:
+            metadata["session_id"] = session_id
+        if user_id:
+            metadata["user_id"] = user_id
+        if tags:
+            metadata["tags"] = list(tags)
+        if conversation_type:
+            metadata["conversation_type"] = conversation_type
+        if custom_fields:
+            metadata["custom_fields"] = dict(custom_fields)
+        return metadata
+
     async def add_conversation(
         self,
         content: str,
@@ -352,21 +396,9 @@ class ConversationMemoryServer:
         available.
         """
         try:
-            # Parse date or use current
-            if conversation_date:
-                try:
-                    date = datetime.fromisoformat(conversation_date.replace("Z", "+00:00"))
-                except ValueError:
-                    date = datetime.now()
-            else:
-                date = datetime.now()
-
-            # Generate title if not provided
+            date = self._resolve_conversation_date(conversation_date)
             if not title:
-                # Extract first line or first 50 characters as title
-                lines = content.strip().split("\n")
-                first_line = lines[0] if lines else content
-                title = first_line[:50] + "..." if len(first_line) > 50 else first_line
+                title = self._derive_title(content)
 
             # Create conversation record
             conversation_id = f"conv_{date.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -385,19 +417,15 @@ class ConversationMemoryServer:
                 "topics": topics,
                 "created_at": datetime.now().isoformat(),
             }
-
-            # Only persist metadata keys when non-empty so legacy JSON files
-            # stay shaped the same for existing users.
-            if session_id:
-                conversation_data["session_id"] = session_id
-            if user_id:
-                conversation_data["user_id"] = user_id
-            if tags:
-                conversation_data["tags"] = list(tags)
-            if conversation_type:
-                conversation_data["conversation_type"] = conversation_type
-            if custom_fields:
-                conversation_data["custom_fields"] = dict(custom_fields)
+            conversation_data.update(
+                self._optional_metadata(
+                    session_id=session_id,
+                    user_id=user_id,
+                    tags=tags,
+                    conversation_type=conversation_type,
+                    custom_fields=custom_fields,
+                )
+            )
 
             # Save conversation file
             async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
@@ -497,6 +525,99 @@ class ConversationMemoryServer:
         file_path = month_folder / f"{conversation_id}.json"
         return file_path if file_path.exists() else None
 
+    def _resync_sqlite_for_update(
+        self,
+        conversation_data: dict[str, Any],
+        file_path: Path,
+        original_raw: str,
+    ) -> dict[str, Any] | None:
+        """Push an updated record into SQLite; None on success, error dict on failure.
+
+        INSERT OR REPLACE on the SQLite row cascades through the FTS triggers,
+        so the FTS index stays current.
+
+        Unlike add_conversation there is no new file to unlink on failure:
+        update_conversation mutates an *existing* record, so rollback means
+        restoring the file's prior content rather than deleting it.
+        index.json / topics.json have not been touched at this point, so
+        returning early is enough to keep them consistent with the restored
+        file.
+        """
+        if not (self.use_sqlite_search and self.search_db):
+            return None
+
+        relative_path = str(file_path.relative_to(self.storage_path))
+        if self.search_db.add_conversation(conversation_data, relative_path):
+            return None
+
+        self._rollback_update_conversation(file_path, original_raw)
+        return {
+            "status": "error",
+            "message": (
+                "Failed to update conversation: SQLite index update "
+                "failed; file content was restored to its prior state"
+            ),
+        }
+
+    @staticmethod
+    def _apply_scalar_updates(
+        conversation_data: dict[str, Any],
+        *,
+        title: str | None,
+        content: str | None,
+        conversation_type: str | None,
+        session_id: str | None,
+        user_id: str | None,
+    ) -> list[str]:
+        """Apply plain field updates in place; return the changed field names.
+
+        `title` is only recorded as a change when it actually differs; the rest
+        count as changed whenever a value is supplied. Order matches the order
+        the fields are reported in the audit line.
+        """
+        changes: list[str] = []
+        if title is not None and title != conversation_data.get("title"):
+            conversation_data["title"] = title
+            changes.append("title")
+        for field, value in (
+            ("content", content),
+            ("conversation_type", conversation_type),
+            ("session_id", session_id),
+            ("user_id", user_id),
+        ):
+            if value is not None:
+                conversation_data[field] = value
+                changes.append(field)
+        return changes
+
+    @staticmethod
+    def _merge_tags(
+        existing_tags: list[str],
+        *,
+        set_tags: list[str] | None,
+        add_tags: list[str] | None,
+        remove_tags: list[str] | None,
+    ) -> list[str]:
+        """Resolve tag operations into the new tag list.
+
+        `set_tags` replaces wholesale (including `[]` to clear); `add_tags` /
+        `remove_tags` mutate. Duplicates are collapsed preserving order.
+        Returns `existing_tags` unchanged when no tag op applies.
+        """
+        if set_tags is not None:
+            return list(dict.fromkeys(set_tags))
+        if not (add_tags or remove_tags):
+            return existing_tags
+
+        tags = list(dict.fromkeys(existing_tags))
+        for tag in add_tags or []:
+            if tag and tag not in tags:
+                tags.append(tag)
+        if remove_tags:
+            remove_lookup = set(remove_tags)
+            tags = [tag for tag in tags if tag not in remove_lookup]
+        return tags
+
     async def update_conversation(
         self,
         conversation_id: str,
@@ -549,41 +670,22 @@ class ConversationMemoryServer:
                 "message": f"Failed to read conversation: {str(e)}",
             }
 
-        changes: list[str] = []
-
-        if title is not None and title != conversation_data.get("title"):
-            conversation_data["title"] = title
-            changes.append("title")
-
-        if content is not None:
-            conversation_data["content"] = content
-            changes.append("content")
-
-        if conversation_type is not None:
-            conversation_data["conversation_type"] = conversation_type
-            changes.append("conversation_type")
-
-        if session_id is not None:
-            conversation_data["session_id"] = session_id
-            changes.append("session_id")
-
-        if user_id is not None:
-            conversation_data["user_id"] = user_id
-            changes.append("user_id")
+        changes = self._apply_scalar_updates(
+            conversation_data,
+            title=title,
+            content=content,
+            conversation_type=conversation_type,
+            session_id=session_id,
+            user_id=user_id,
+        )
 
         existing_tags = list(conversation_data.get("tags") or [])
-        new_tags = existing_tags
-        if set_tags is not None:
-            new_tags = list(dict.fromkeys(set_tags))
-        elif add_tags or remove_tags:
-            tags_set = list(dict.fromkeys(existing_tags))
-            for t in add_tags or []:
-                if t and t not in tags_set:
-                    tags_set.append(t)
-            if remove_tags:
-                remove_lookup = set(remove_tags)
-                tags_set = [t for t in tags_set if t not in remove_lookup]
-            new_tags = tags_set
+        new_tags = self._merge_tags(
+            existing_tags,
+            set_tags=set_tags,
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+        )
         if new_tags != existing_tags:
             conversation_data["tags"] = new_tags
             changes.append("tags")
@@ -627,18 +729,9 @@ class ConversationMemoryServer:
         # haven't been touched yet at this point (the calls below haven't
         # run), so there's nothing to revert there -- returning early is
         # enough to keep them consistent with the restored file.
-        if self.use_sqlite_search and self.search_db:
-            relative_path = str(file_path.relative_to(self.storage_path))
-            sqlite_ok = self.search_db.add_conversation(conversation_data, relative_path)
-            if not sqlite_ok:
-                self._rollback_update_conversation(file_path, original_raw)
-                return {
-                    "status": "error",
-                    "message": (
-                        "Failed to update conversation: SQLite index update "
-                        "failed; file content was restored to its prior state"
-                    ),
-                }
+        sqlite_error = self._resync_sqlite_for_update(conversation_data, file_path, original_raw)
+        if sqlite_error is not None:
+            return sqlite_error
 
         self._replace_index_entry(conversation_data, file_path)
         self._resync_topics_index(old_topics, new_topics, conversation_id)
