@@ -270,7 +270,7 @@ class TestImportFilePathValidation:
 
     def test_valid_existing_file(self, tmp_path):
         target = tmp_path / "export.json"
-        target.write_text("{}")
+        target.write_text("{}", encoding="utf-8")
 
         result = validate_import_file_path(target)
 
@@ -279,7 +279,7 @@ class TestImportFilePathValidation:
 
     def test_valid_existing_file_as_string(self, tmp_path):
         target = tmp_path / "export.json"
-        target.write_text("{}")
+        target.write_text("{}", encoding="utf-8")
 
         result = validate_import_file_path(str(target))
 
@@ -321,7 +321,7 @@ class TestImportFilePathValidation:
         # privilege-escalation vector here and are intentionally allowed.
         target = tmp_path / "sub" / "export.json"
         target.parent.mkdir()
-        target.write_text("{}")
+        target.write_text("{}", encoding="utf-8")
         monkeypatch.chdir(tmp_path)
 
         result = validate_import_file_path("sub/../sub/export.json")

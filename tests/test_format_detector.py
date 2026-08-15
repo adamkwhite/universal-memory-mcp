@@ -61,7 +61,7 @@ class TestFormatDetector:
         }
 
         test_file = self.temp_path / "chatgpt_export.json"
-        test_file.write_text(json.dumps(chatgpt_data))
+        test_file.write_text(json.dumps(chatgpt_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -85,7 +85,7 @@ class TestFormatDetector:
         }
 
         test_file = self.temp_path / "cursor_export.json"
-        test_file.write_text(json.dumps(cursor_data))
+        test_file.write_text(json.dumps(cursor_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -106,7 +106,7 @@ class TestFormatDetector:
         }
 
         test_file = self.temp_path / "memory_format.json"
-        test_file.write_text(json.dumps(memory_data))
+        test_file.write_text(json.dumps(memory_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -130,7 +130,7 @@ class TestFormatDetector:
         }
 
         test_file = self.temp_path / "claude_desktop_export.json"
-        test_file.write_text(json.dumps(claude_data))
+        test_file.write_text(json.dumps(claude_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -146,7 +146,7 @@ class TestFormatDetector:
         }
 
         test_file = self.temp_path / "generic_export.json"
-        test_file.write_text(json.dumps(generic_data))
+        test_file.write_text(json.dumps(generic_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -170,7 +170,7 @@ class TestFormatDetector:
 """
 
         test_file = self.temp_path / "conversation.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -184,7 +184,7 @@ class TestFormatDetector:
     def test_detect_format_invalid_json(self):
         """Test detection with invalid JSON file."""
         test_file = self.temp_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -194,7 +194,7 @@ class TestFormatDetector:
     def test_detect_format_empty_file(self):
         """Test detection with empty file."""
         test_file = self.temp_path / "empty.json"
-        test_file.write_text("")
+        test_file.write_text("", encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -204,7 +204,9 @@ class TestFormatDetector:
     def test_detect_format_unsupported_extension(self):
         """Test detection with unsupported file extension."""
         test_file = self.temp_path / "conversation.xml"
-        test_file.write_text("<conversation><message>Hello</message></conversation>")
+        test_file.write_text(
+            "<conversation><message>Hello</message></conversation>", encoding="utf-8"
+        )
 
         result = self.detector.detect_format(test_file)
 
@@ -333,7 +335,7 @@ class TestFormatDetectorErrorHandling:
     def test_detect_format_permission_error(self):
         """Test detection with file permission issues."""
         test_file = self.temp_path / "permission_test.json"
-        test_file.write_text('{"test": "data"}')
+        test_file.write_text('{"test": "data"}', encoding="utf-8")
 
         # Make file unreadable
         try:
@@ -360,7 +362,7 @@ class TestFormatDetectorErrorHandling:
         }
 
         test_file = self.temp_path / "large_export.json"
-        test_file.write_text(json.dumps(large_data))
+        test_file.write_text(json.dumps(large_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -394,7 +396,7 @@ class TestFormatDetectorErrorHandling:
         ]
 
         test_file = self.temp_path / "unicode_export.json"
-        test_file.write_text(json.dumps(unicode_data, ensure_ascii=False))
+        test_file.write_text(json.dumps(unicode_data, ensure_ascii=False), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -431,7 +433,7 @@ What would you like to work on?
 """
 
         test_file = self.temp_path / "conversation.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -448,7 +450,7 @@ What would you like to work on?
         plain_text = "This is just a plain text file without any conversation structure."
 
         test_file = self.temp_path / "plain.txt"
-        test_file.write_text(plain_text)
+        test_file.write_text(plain_text, encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -513,9 +515,9 @@ class TestFormatDetectorIntegration:
         for filename, data in files_data:
             test_file = self.temp_path / filename
             if filename.endswith(".json"):
-                test_file.write_text(json.dumps(data))
+                test_file.write_text(json.dumps(data), encoding="utf-8")
             else:
-                test_file.write_text(data)
+                test_file.write_text(data, encoding="utf-8")
 
             result = self.detector.detect_format(test_file)
             results.append((filename, result["platform"]))
@@ -539,7 +541,7 @@ class TestFormatDetectorIntegration:
         }
 
         test_file = self.temp_path / "high_confidence.json"
-        test_file.write_text(json.dumps(memory_data))
+        test_file.write_text(json.dumps(memory_data), encoding="utf-8")
 
         result = self.detector.detect_format(test_file)
 
@@ -548,7 +550,7 @@ class TestFormatDetectorIntegration:
         # Lower confidence: generic structure
         generic_data = {"some": "random", "data": "here"}
         test_file2 = self.temp_path / "low_confidence.json"
-        test_file2.write_text(json.dumps(generic_data))
+        test_file2.write_text(json.dumps(generic_data), encoding="utf-8")
 
         result2 = self.detector.detect_format(test_file2)
 

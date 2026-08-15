@@ -66,13 +66,13 @@ def test_remove_index_entry_logs_on_real_malformed_index(server, caplog):
     """_remove_index_entry (line ~455): must log and swallow a real
     json.JSONDecodeError from a genuinely corrupt index.json rather than
     raise."""
-    server.index_file.write_text("{not valid json,,,")
+    server.index_file.write_text("{not valid json,,,", encoding="utf-8")
 
     with caplog.at_level(logging.ERROR):
         server._remove_index_entry("conv_x")
 
     # Best-effort: the corrupt file is left as-is, not silently blown away.
-    assert server.index_file.read_text() == "{not valid json,,,"
+    assert server.index_file.read_text(encoding="utf-8") == "{not valid json,,,"
     assert any("Rollback: failed to remove index entry" in r.message for r in caplog.records)
 
 
@@ -94,7 +94,7 @@ def test_replace_index_entry_logs_on_real_malformed_index(server, caplog):
     """_replace_index_entry (line ~687): must log and swallow a real
     json.JSONDecodeError from a genuinely corrupt index.json rather than
     raise."""
-    server.index_file.write_text("{not valid json,,,")
+    server.index_file.write_text("{not valid json,,,", encoding="utf-8")
     conversation_data = {
         "id": "conv_x",
         "title": "t",
@@ -106,7 +106,7 @@ def test_replace_index_entry_logs_on_real_malformed_index(server, caplog):
     with caplog.at_level(logging.ERROR):
         server._replace_index_entry(conversation_data, fake_file)
 
-    assert server.index_file.read_text() == "{not valid json,,,"
+    assert server.index_file.read_text(encoding="utf-8") == "{not valid json,,,"
     assert any("Error replacing index entry" in r.message for r in caplog.records)
 
 
@@ -114,14 +114,14 @@ def test_resync_topics_index_logs_on_real_malformed_topics_file(server, caplog):
     """_resync_topics_index's read except (line ~703): must log and return
     early on a real json.JSONDecodeError from a genuinely corrupt
     topics.json, rather than raise or attempt the update."""
-    server.topics_file.write_text("{not valid json,,,")
+    server.topics_file.write_text("{not valid json,,,", encoding="utf-8")
 
     with caplog.at_level(logging.ERROR):
         result = server._resync_topics_index(["python"], ["docker"], "conv_x")
 
     assert result is None
     # Best-effort: corrupt file left untouched, no write attempted.
-    assert server.topics_file.read_text() == "{not valid json,,,"
+    assert server.topics_file.read_text(encoding="utf-8") == "{not valid json,,,"
     assert any("Error loading topics index" in r.message for r in caplog.records)
 
 
@@ -130,7 +130,7 @@ def test_resync_topics_index_logs_on_real_os_error_writing(server, caplog):
     succeed (valid JSON) but the write must fail with a real OSError --
     forced by making topics.json read-only -- and the handler must log
     and swallow it rather than raise."""
-    server.topics_file.write_text(json.dumps({"topics": {}}))
+    server.topics_file.write_text(json.dumps({"topics": {}}), encoding="utf-8")
     os.chmod(server.topics_file, 0o444)
     try:
         with caplog.at_level(logging.ERROR):

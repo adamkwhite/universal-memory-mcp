@@ -10,6 +10,7 @@ import json
 import shutil
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,7 @@ class TestSearchDatabase:
         # Test database structure
         import sqlite3
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor]
 
@@ -194,7 +195,7 @@ class TestMetadataIndexing:
         """Fresh init should contain all metadata columns and the tags table."""
         import sqlite3
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             cursor = conn.execute("PRAGMA table_info(conversations)")
             columns = {row[1] for row in cursor.fetchall()}
 
@@ -205,7 +206,7 @@ class TestMetadataIndexing:
             "custom_fields_json",
         }.issubset(columns)
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = {row[0] for row in cursor}
         assert "conversation_tags" in tables
@@ -216,7 +217,7 @@ class TestMetadataIndexing:
 
         import sqlite3
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 "SELECT session_id, user_id, conversation_type, "
@@ -251,7 +252,7 @@ class TestMetadataIndexing:
 
         import sqlite3
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             row = conn.execute(
                 "SELECT session_id, user_id, conversation_type FROM conversations WHERE id=?",
                 (legacy["id"],),
@@ -332,7 +333,7 @@ class TestMetadataIndexing:
         import sqlite3
 
         # Create the pre-metadata schema by hand (original 8 columns only)
-        with sqlite3.connect(temp_db_path) as conn:
+        with closing(sqlite3.connect(temp_db_path)) as conn, conn:
             conn.execute(
                 """
                 CREATE TABLE conversations (
@@ -365,7 +366,7 @@ class TestMetadataIndexing:
         # Instantiating SearchDatabase should migrate the schema non-destructively
         SearchDatabase(temp_db_path)
 
-        with sqlite3.connect(temp_db_path) as conn:
+        with closing(sqlite3.connect(temp_db_path)) as conn, conn:
             cursor = conn.execute("PRAGMA table_info(conversations)")
             columns = {row[1] for row in cursor.fetchall()}
             existing_row = conn.execute(
@@ -387,7 +388,7 @@ class TestMetadataIndexing:
 
         import sqlite3
 
-        with sqlite3.connect(search_db.db_path) as conn:
+        with closing(sqlite3.connect(search_db.db_path)) as conn, conn:
             cursor = conn.execute("PRAGMA table_info(conversations)")
             names = [row[1] for row in cursor.fetchall()]
         # session_id should appear exactly once
@@ -526,7 +527,7 @@ class TestConversationMemoryServerSQLite:
         assert result["status"] == "success"
 
         saved = Path(result["file_path"])
-        data = json.loads(saved.read_text())
+        data = json.loads(saved.read_text(encoding="utf-8"))
         assert data["session_id"] == "sess_abc"
         assert data["user_id"] == "user_x"
         assert data["tags"] == ["starred", "project:memory"]
@@ -540,7 +541,7 @@ class TestConversationMemoryServerSQLite:
             "plain content", "plain title", "2026-04-18T10:00:00"
         )
         saved = Path(result["file_path"])
-        data = json.loads(saved.read_text())
+        data = json.loads(saved.read_text(encoding="utf-8"))
 
         for missing in (
             "session_id",
@@ -635,7 +636,7 @@ class TestConversationMigration:
             year_month_dir.mkdir(parents=True, exist_ok=True)
 
             conv_file = year_month_dir / f"{conv_data['id']}.json"
-            with open(conv_file, "w") as f:
+            with open(conv_file, "w", encoding="utf-8") as f:
                 json.dump(conv_data, f)
 
         # Create index file
@@ -654,7 +655,7 @@ class TestConversationMigration:
             "last_updated": "2025-06-12T10:00:00",
         }
 
-        with open(conversations_dir / "index.json", "w") as f:
+        with open(conversations_dir / "index.json", "w", encoding="utf-8") as f:
             json.dump(index_data, f)
 
         yield temp_dir

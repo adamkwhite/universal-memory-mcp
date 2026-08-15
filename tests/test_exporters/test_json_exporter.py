@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest  # type: ignore[import-not-found]
+from conftest import requires_posix_permissions
 
 # Ensure ``src/`` is importable so we can use bare ``exporters.X`` imports
 # (matching the pattern used by tests/test_config.py).
@@ -47,7 +48,7 @@ class TestJsonExporterBasics:
         assert result.metadata["format_version"] == JSON_EXPORT_FORMAT_VERSION
         assert result.success_rate == 1.0
 
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         assert payload["format"] == "universal"
         assert payload["conversation_count"] == 1
         assert len(payload["conversations"]) == 1
@@ -63,10 +64,11 @@ class TestJsonExporterBasics:
         assert result.success is True
         assert result.conversations_exported == 0
         assert out.exists()
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         assert payload["conversation_count"] == 0
         assert payload["conversations"] == []
 
+    @requires_posix_permissions
     def test_export_to_unwritable_path_returns_error(self, tmp_path):
         _build_storage(tmp_path, [_universal_conversation()])
         bad = Path("/proc/no-such-dir/out.json")
@@ -112,7 +114,7 @@ class TestJsonExporterFilters:
         result = exporter.export(out, filters)
         assert result.conversations_exported == 1
 
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         applied = payload["filters_applied"]
         assert applied["platforms"] == ["chatgpt"]
         assert applied["date_from"] == "2025-06-01T00:00:00"
@@ -127,7 +129,7 @@ class TestJsonExporterFilters:
         exporter = JsonExporter(tmp_path)
         result = exporter.export(out, Filters(limit=2))
         assert result.conversations_exported == 2
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         assert len(payload["conversations"]) == 2
 
 
@@ -248,7 +250,7 @@ class TestJsonExporterLegacyUpgrade:
         out = tmp_path / "out.json"
         result = JsonExporter(tmp_path).export(out)
         assert result.conversations_exported == 1
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         conv = payload["conversations"][0]
         # Synthetic universal fields populated
         assert conv["platform"] == "unknown"
@@ -332,7 +334,7 @@ class TestJsonExporterRoundTrip:
         validation = exporter.validate(out)
         assert validation["valid"], validation
 
-        payload = json.loads(out.read_text())
+        payload = json.loads(out.read_text(encoding="utf-8"))
         exported_conv = payload["conversations"][0]
 
         # Key fields preserved verbatim from the universal-format file.

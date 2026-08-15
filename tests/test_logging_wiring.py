@@ -68,7 +68,7 @@ class TestCorrelationIdEndToEnd:
         # fails outright on unfixed main: the record never reaches the file
         # at all (the KeyError happens during formatting, inside the
         # handler, after the record was already accepted).
-        contents = log_file.read_text()
+        contents = log_file.read_text(encoding="utf-8")
         assert "child logger message" in contents
         assert "e2e-test-id" in contents
 
@@ -90,7 +90,11 @@ class TestSamplingEndToEnd:
         for i in range(total):
             child_logger.info(f"noisy record {i}", extra={"context": {"type": "noisy"}})
 
-        lines = [line for line in log_file.read_text().splitlines() if "noisy record" in line]
+        lines = [
+            line
+            for line in log_file.read_text(encoding="utf-8").splitlines()
+            if "noisy record" in line
+        ]
         assert len(lines) == total // rate
 
     def test_warning_and_error_are_never_sampled_through_child_logger(self, tmp_path):
@@ -107,7 +111,7 @@ class TestSamplingEndToEnd:
             child_logger.warning(f"warning {i}", extra={"context": {"type": "noisy"}})
             child_logger.error(f"error {i}", extra={"context": {"type": "noisy"}})
 
-        contents = log_file.read_text()
+        contents = log_file.read_text(encoding="utf-8")
         for i in range(10):
             assert f"warning {i}" in contents
             assert f"error {i}" in contents
@@ -145,7 +149,11 @@ class TestNoDoubleCountingAcrossHandlers:
 
         # If the counter advanced once per handler (double-counting), the
         # effective rate would be rate/2 and this would be total // (rate/2).
-        file_lines = [line for line in log_file.read_text().splitlines() if "noisy record" in line]
+        file_lines = [
+            line
+            for line in log_file.read_text(encoding="utf-8").splitlines()
+            if "noisy record" in line
+        ]
         assert len(file_lines) == total // rate
 
 
@@ -159,7 +167,7 @@ def demo() -> None:
         setup_logging(log_file=str(log_file), console_output=False)
         set_correlation_id("demo-id")
         get_logger("universal_memory_mcp.server").info("demo message")
-        contents = log_file.read_text()
+        contents = log_file.read_text(encoding="utf-8")
         assert "demo message" in contents, "child-logger record was dropped"
         assert "demo-id" in contents, "correlation id missing from output"
     print("demo() OK")

@@ -473,7 +473,8 @@ class TestSaveAndReport:
                     "conversation_type": "chat",
                     "custom_fields": {"origin": "chatgpt"},
                 }
-            )
+            ),
+            encoding="utf-8",
         )
 
         importer = EnhancedBulkImporter(

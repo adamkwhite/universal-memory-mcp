@@ -47,7 +47,9 @@ def test_import_file_reports_failure_on_real_type_error_during_parse(importer, t
     TypeError inside parse_conversation -- must be reported via
     ImportResult(success=False), not propagate."""
     session_file = Path(temp_dir) / "session.json"
-    session_file.write_text('{"session_id": "s1", "workspace": 12345, "interactions": []}')
+    session_file.write_text(
+        '{"session_id": "s1", "workspace": 12345, "interactions": []}', encoding="utf-8"
+    )
 
     result = importer.import_file(session_file)
 

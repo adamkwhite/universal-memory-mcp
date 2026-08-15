@@ -27,6 +27,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -53,7 +54,7 @@ def _corrupt_topics_json(server, conversation_id: str) -> None:
     """Simulate a corrupted row (e.g. a partial/interrupted write) by
     forcing the topics_json column to non-JSON text via a direct SQL
     UPDATE -- not a mock of the exception, a genuine malformed row."""
-    with sqlite3.connect(server.search_db.db_path) as conn:
+    with closing(sqlite3.connect(server.search_db.db_path)) as conn, conn:
         conn.execute(
             "UPDATE conversations SET topics_json = 'not-json' WHERE id = ?",
             (conversation_id,),

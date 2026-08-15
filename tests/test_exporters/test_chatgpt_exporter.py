@@ -13,6 +13,8 @@ SRC_DIR = Path(__file__).resolve().parents[2] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from conftest import requires_posix_permissions  # noqa: E402
+
 from exporters.base_exporter import Filters  # type: ignore[import-not-found]  # noqa: E402
 from exporters.chatgpt_exporter import (  # type: ignore[import-not-found]  # noqa: E402
     ChatgptExporter,
@@ -32,7 +34,7 @@ class TestChatgptExporterBasics:
         result = ChatgptExporter(tmp_path).export(out)
         assert result.success
         assert result.conversations_exported == 1
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         assert isinstance(data, list)
         assert len(data) == 1
         first = data[0]
@@ -46,7 +48,7 @@ class TestChatgptExporterBasics:
         _build_storage(tmp_path, [_universal_conversation()])
         out = tmp_path / "out.json"
         ChatgptExporter(tmp_path).export(out)
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         mapping = data[0]["mapping"]
         # Root + 2 messages = 3 nodes.
         assert len(mapping) == 3
@@ -60,7 +62,7 @@ class TestChatgptExporterBasics:
         result = ChatgptExporter(tmp_path).export(out)
         assert result.success is True
         assert result.conversations_exported == 0
-        assert json.loads(out.read_text()) == []
+        assert json.loads(out.read_text(encoding="utf-8")) == []
 
     def test_export_with_legacy_conversation(self, tmp_path):
         _build_storage(tmp_path, [_legacy_conversation()])
@@ -68,7 +70,7 @@ class TestChatgptExporterBasics:
         result = ChatgptExporter(tmp_path).export(out)
         assert result.success
         assert result.conversations_exported == 1
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         # The synthetic universal upgrade should produce one assistant
         # message in the mapping, plus the synthetic root.
         mapping = data[0]["mapping"]
@@ -76,6 +78,7 @@ class TestChatgptExporterBasics:
         assert len(msg_nodes) == 1
         assert msg_nodes[0]["message"]["author"]["role"] == "assistant"
 
+    @requires_posix_permissions
     def test_unwritable_path_returns_error(self, tmp_path):
         _build_storage(tmp_path, [_universal_conversation()])
         bad = Path("/proc/no-such-dir/out.json")
@@ -124,7 +127,7 @@ class TestChatgptExporterMessageNormalization:
         _build_storage(tmp_path, [conv])
         out = tmp_path / "out.json"
         ChatgptExporter(tmp_path).export(out)
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         roles = {
             n["message"]["author"]["role"]
             for n in data[0]["mapping"].values()
@@ -139,7 +142,7 @@ class TestChatgptExporterMessageNormalization:
         _build_storage(tmp_path, [conv])
         out = tmp_path / "out.json"
         ChatgptExporter(tmp_path).export(out)
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         msg_nodes = [n for n in data[0]["mapping"].values() if n["message"] is not None]
         assert all(n["id"] for n in msg_nodes)
         # All ids should be unique.
@@ -155,7 +158,7 @@ class TestChatgptExporterMessageNormalization:
         _build_storage(tmp_path, [conv])
         out = tmp_path / "out.json"
         ChatgptExporter(tmp_path).export(out)
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         mapping = data[0]["mapping"]
         # Exactly one root.
         roots = [n for n in mapping.values() if n["parent"] is None]
@@ -231,7 +234,7 @@ class TestChatgptExporterFilters:
         out = tmp_path / "out.json"
         result = ChatgptExporter(tmp_path).export(out, Filters(platforms=["chatgpt"]))
         assert result.conversations_exported == 1
-        data = json.loads(out.read_text())
+        data = json.loads(out.read_text(encoding="utf-8"))
         assert len(data) == 1
 
 
@@ -297,7 +300,8 @@ class TestChatgptExporterRoundTrip:
                         }
                     ]
                 }
-            )
+            ),
+            encoding="utf-8",
         )
 
         out = tmp_path / "out.json"
@@ -317,7 +321,7 @@ class TestChatgptExporterRoundTrip:
         # "conversations" key. Wrap accordingly for the round-trip check.
         wrapped = tmp_path / "wrapped.json"
         wrapped.write_text(
-            json.dumps({"conversations": json.loads(out.read_text())}),
+            json.dumps({"conversations": json.loads(out.read_text(encoding="utf-8"))}),
             encoding="utf-8",
         )
         # The wrapped form won't match the importer's expected message

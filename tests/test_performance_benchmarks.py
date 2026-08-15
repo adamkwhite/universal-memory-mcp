@@ -113,7 +113,7 @@ class BenchmarkResults:
 
     def save_to_file(self, filepath: str):
         """Save results to JSON file."""
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "results": self.results,
@@ -308,7 +308,7 @@ class TestSearchPerformance:
         copied = 0
         index_path = conversations_dst / "index.json"
         if index_path.exists():
-            with open(index_path) as f:
+            with open(index_path, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             # Keep only first 'count' conversations
@@ -325,7 +325,7 @@ class TestSearchPerformance:
                     copied += 1
 
             # Save truncated index
-            with open(index_path, "w") as f:
+            with open(index_path, "w", encoding="utf-8") as f:
                 json.dump(index_data, f, indent=2)
 
         return copied
@@ -449,7 +449,7 @@ class TestOverallPerformance:
         # Get dataset stats
         stats_file = test_data_path / "generation_stats.json"
         if stats_file.exists():
-            with open(stats_file) as f:
+            with open(stats_file, encoding="utf-8") as f:
                 stats = json.load(f)
         else:
             stats = {
