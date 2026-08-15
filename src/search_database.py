@@ -568,14 +568,19 @@ class SearchDatabase:
 
         FTS5 has its own query language, so passing text such as ``llama.cpp``
         or ``foo OR bar`` through unchanged can either fail parsing or change
-        the meaning of the search. Extract Unicode word tokens and quote every
-        token so punctuation and reserved operators are always treated as
-        user text. Single-character terms are retained for names such as C/R.
+        the meaning of the search. Split on whitespace, extract Unicode word
+        tokens from each chunk, discard single-character tokens, and quote the
+        remaining adjacent tokens as one phrase. Whitespace-separated chunks
+        retain the existing OR semantics.
         """
-        terms = re.findall(r"\w+", query, flags=re.UNICODE)
-        if not terms:
-            return None
-        return " OR ".join(f'"{term}"' for term in terms)
+        terms = []
+        for chunk in query.split():
+            tokens = [
+                term for term in re.findall(r"\w+", chunk, flags=re.UNICODE) if len(term) >= 2
+            ]
+            if tokens:
+                terms.append('"' + " ".join(tokens) + '"')
+        return " OR ".join(terms) if terms else None
 
     def rebuild_fts_index(self):
         """Rebuild the FTS5 index (useful after bulk imports)."""

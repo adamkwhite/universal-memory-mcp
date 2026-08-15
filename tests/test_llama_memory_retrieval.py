@@ -33,12 +33,19 @@ def test_fts_treats_punctuation_and_operators_as_literal_terms(tmp_path: Path) -
         ),
         "data/conversations/example.json",
     )
+    decoy_id = "conv_20260815_000000_87654321"
+    decoy = _record(
+        conversation_id=decoy_id,
+        content="Several llamas live together in a pasture.",
+    )
+    decoy["title"] = "Llama husbandry"
+    decoy["tags"] = []
+    assert database.add_conversation(decoy, "data/conversations/decoy.json")
 
-    for query in (
-        "llama.cpp",
-        'llama.cpp (OR) "cache"',
-        "C++",
-    ):
+    exact_results = database.search_conversations("llama.cpp")
+    assert [result["id"] for result in exact_results] == [conversation_id]
+
+    for query in ('llama.cpp (OR) "cache"',):
         results = database.search_conversations(query)
         assert results
         assert "error" not in results[0]
@@ -46,6 +53,8 @@ def test_fts_treats_punctuation_and_operators_as_literal_terms(tmp_path: Path) -
         assert results[0]["session_id"] == "llama.cpp:source-session"
         assert results[0]["conversation_type"] == "chat"
 
+    assert database.search_conversations("a") == []
+    assert database.search_conversations("C++") == []
     assert database.search_conversations("...()[]{}-:*") == []
 
 
