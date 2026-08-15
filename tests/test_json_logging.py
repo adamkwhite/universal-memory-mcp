@@ -8,7 +8,6 @@ with both JSON and text formats.
 import json
 import logging
 import os
-import tempfile
 from io import StringIO
 
 import pytest
@@ -65,16 +64,18 @@ def text_logger():
 
 
 @pytest.fixture
-def temp_log_file():
-    """Create a temporary log file for testing"""
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".log") as f:
-        temp_path = f.name
+def temp_log_file(tmp_path):
+    """Path for a log file the test's own setup_logging call will create.
 
-    yield temp_path
-
-    # Cleanup
-    if os.path.exists(temp_path):
-        os.unlink(temp_path)
+    This used NamedTemporaryFile(delete=False) with an os.unlink in its
+    teardown. Because pytest finalizes autouse fixtures *last*, that unlink
+    ran before conftest's _close_file_log_handlers had closed the FileHandler
+    setup_logging attaches to this path -- so on Windows the delete hit a live
+    handle and every test using the fixture ended in a teardown error.
+    tmp_path needs no explicit cleanup, which removes the ordering problem
+    rather than working around it.
+    """
+    return str(tmp_path / "test.log")
 
 
 @pytest.fixture(autouse=True)
@@ -307,7 +308,7 @@ class TestSpecializedLoggingFunctions:
         log_performance("test_function", 0.123, query_count=5, cache_hits=3)
 
         # Read log file
-        with open(temp_log_file) as f:
+        with open(temp_log_file, encoding="utf-8") as f:
             log_output = f.read().strip()
 
         # Parse JSON
@@ -335,7 +336,7 @@ class TestSpecializedLoggingFunctions:
         )
 
         # Read log file
-        with open(temp_log_file) as f:
+        with open(temp_log_file, encoding="utf-8") as f:
             log_output = f.read().strip()
 
         # Parse JSON
@@ -367,7 +368,7 @@ class TestSpecializedLoggingFunctions:
         )
 
         # Read log file
-        with open(temp_log_file) as f:
+        with open(temp_log_file, encoding="utf-8") as f:
             log_output = f.read().strip()
 
         # Parse JSON
@@ -398,7 +399,7 @@ class TestSpecializedLoggingFunctions:
         )
 
         # Read log file
-        with open(temp_log_file) as f:
+        with open(temp_log_file, encoding="utf-8") as f:
             log_output = f.read().strip()
 
         # Parse JSON
@@ -423,7 +424,7 @@ class TestSpecializedLoggingFunctions:
         log_function_call("test_function", param1="value1", param2=42)
 
         # Read log file
-        with open(temp_log_file) as f:
+        with open(temp_log_file, encoding="utf-8") as f:
             log_output = f.read().strip()
 
         # Parse JSON

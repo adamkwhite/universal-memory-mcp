@@ -95,7 +95,7 @@ class TestCompleteEdgeCaseCoverage:
     async def test_search_returns_error_in_results(self, server, temp_storage):
         """Test search error handling (lines 115-116)"""
         # Corrupt the index file to cause an error
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             f.write("invalid json")
 
         results = await server.search_conversations("test", limit=5)
@@ -202,7 +202,7 @@ class TestCompleteEdgeCaseCoverage:
             "last_updated": "2025-06-01T10:00:00Z",
         }
 
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             json.dump(fake_index, f)
 
         # Search should skip the non-existent file
@@ -298,7 +298,7 @@ class TestCompleteEdgeCaseCoverage:
         # Write topics index directly to test counting logic
         import json
 
-        with open(server.topics_file, "w") as f:
+        with open(server.topics_file, "w", encoding="utf-8") as f:
             json.dump(topics_content, f)
 
         summary = await server.generate_weekly_summary(0)
@@ -352,7 +352,7 @@ class TestCompleteEdgeCaseCoverage:
 
         # Verify file contains the summary content
         latest_file = max(summary_files, key=lambda x: x.stat().st_mtime)
-        with open(latest_file) as f:
+        with open(latest_file, encoding="utf-8") as f:
             file_content = f.read()
 
         assert "File Save Test" in file_content
@@ -370,7 +370,7 @@ class TestCompleteEdgeCaseCoverage:
         # Get the conversation ID from the index
         import json
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         conversation_id = index_data["conversations"][-1]["id"]
@@ -390,7 +390,7 @@ class TestCompleteEdgeCaseCoverage:
         # Get conversation ID
         import json
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         conversation_id = index_data["conversations"][-1]["id"]
@@ -420,7 +420,7 @@ class TestCompleteEdgeCaseCoverage:
             "last_updated": "2025-06-01T10:00:00Z",
         }
 
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             json.dump(fake_index, f)
 
         # Test get_preview with non-existent file
@@ -463,7 +463,7 @@ class TestCompleteEdgeCaseCoverage:
         # Check that quoted terms were extracted properly
         import json
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         topics = index_data["conversations"][-1]["topics"]
@@ -505,7 +505,7 @@ class TestCompleteEdgeCaseCoverage:
         # Check that title was auto-generated and truncated
         import json
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         title = index_data["conversations"][-1]["title"]
@@ -579,7 +579,7 @@ Line 5: Final line"""
 
         # Corrupt the conversation file to trigger exception during JSON parsing
         file_path = Path(result["file_path"])
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write("invalid json content that will cause parsing to fail")
 
         try:
@@ -591,7 +591,7 @@ Line 5: Final line"""
             # Restore a valid JSON file
             import json
 
-            with open(file_path, "w") as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump({"content": "restored content", "topics": []}, f)
 
     @pytest.mark.asyncio
@@ -616,7 +616,7 @@ Line 5: Final line"""
             "last_updated": "2025-06-01T10:00:00Z",
         }
 
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             json.dump(fake_index, f)
 
         # This should trigger exception handling on lines 348-349 and continue processing
@@ -741,7 +741,7 @@ class TestMCPToolWrapperFunctions:
         # Manually add many topics to trigger line 343
         import json
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         # Update both the conversation file and index to have more than 3 topics
@@ -750,7 +750,7 @@ class TestMCPToolWrapperFunctions:
             conv_file_path = server.storage_path / conv_info["file_path"]
 
             # Update the actual conversation file
-            with open(conv_file_path) as f:
+            with open(conv_file_path, encoding="utf-8") as f:
                 conv_data = json.load(f)
             conv_data["topics"] = [
                 "topic1",
@@ -759,7 +759,7 @@ class TestMCPToolWrapperFunctions:
                 "topic4",
                 "topic5",
             ]
-            with open(conv_file_path, "w") as f:
+            with open(conv_file_path, "w", encoding="utf-8") as f:
                 json.dump(conv_data, f)
 
             # Update the index as well
@@ -770,7 +770,7 @@ class TestMCPToolWrapperFunctions:
                 "topic4",
                 "topic5",
             ]
-            with open(server.index_file, "w") as f:
+            with open(server.index_file, "w", encoding="utf-8") as f:
                 json.dump(index_data, f)
 
         # Generate summary to trigger line 343 (topics truncation)
@@ -825,12 +825,12 @@ class TestConversationMemoryServerDirect:
     def test_init_index_files(self, server):
         """Test index file initialization"""
         # Index files should already exist from initialization
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
         assert "conversations" in index_data
         assert "last_updated" in index_data
 
-        with open(server.topics_file) as f:
+        with open(server.topics_file, encoding="utf-8") as f:
             topics_data = json.load(f)
         assert "topics" in topics_data
         assert "last_updated" in topics_data
@@ -849,11 +849,11 @@ class TestConversationMemoryServerDirect:
             "topics": ["test"],
             "created_at": "2025-01-15T10:00:00",
         }
-        with open(conv_file, "w") as f:
+        with open(conv_file, "w", encoding="utf-8") as f:
             json.dump(conv_data, f)
 
         # Index should be empty before sync
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             before = json.load(f)
         assert len(before["conversations"]) == 0
 
@@ -861,7 +861,7 @@ class TestConversationMemoryServerDirect:
         server._sync_index_from_files()
 
         # Index should now have the conversation
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             after = json.load(f)
         assert len(after["conversations"]) == 1
         assert after["conversations"][0]["id"] == "conv_20250115_100000_1234"
@@ -880,19 +880,19 @@ class TestConversationMemoryServerDirect:
             "topics": ["test"],
             "created_at": "2025-02-01T12:00:00",
         }
-        with open(conv_file, "w") as f:
+        with open(conv_file, "w", encoding="utf-8") as f:
             json.dump(conv_data, f)
 
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             first_sync = json.load(f)
         count_after_first = len(first_sync["conversations"])
 
         # Run sync again — should not duplicate
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             second_sync = json.load(f)
         assert len(second_sync["conversations"]) == count_after_first
 
@@ -901,7 +901,7 @@ class TestConversationMemoryServerDirect:
         date_folder = server.conversations_path / "2025" / folder
         date_folder.mkdir(parents=True, exist_ok=True)
         conv_file = date_folder / f"{conv_id}.json"
-        with open(conv_file, "w") as f:
+        with open(conv_file, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "id": conv_id,
@@ -926,7 +926,7 @@ class TestConversationMemoryServerDirect:
         first = self._write_conv(server, "04-april", "conv_20250401_120000_1111", "First")
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             assert len(json.load(f)["conversations"]) == 1
 
         # Swap one for one: file count and index count both stay at 1.
@@ -935,7 +935,7 @@ class TestConversationMemoryServerDirect:
 
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             indexed = {c["id"] for c in json.load(f)["conversations"]}
         assert "conv_20250402_120000_2222" in indexed, (
             "replacement conversation was never indexed — equal-count drift missed"
@@ -948,7 +948,7 @@ class TestConversationMemoryServerDirect:
         candidate and gets re-read — that must not produce a duplicate.
         """
         self._write_conv(server, "05-may", "conv_20250501_120000_3333", "Legacy")
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "conversations": [
@@ -968,7 +968,7 @@ class TestConversationMemoryServerDirect:
 
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             conversations = json.load(f)["conversations"]
         assert len(conversations) == 1, "re-read of a file_path-less entry duplicated it"
 
@@ -977,13 +977,13 @@ class TestConversationMemoryServerDirect:
         date_folder = server.conversations_path / "2025" / "03-march"
         date_folder.mkdir(parents=True, exist_ok=True)
         corrupt_file = date_folder / "conv_20250301_000000_0000.json"
-        with open(corrupt_file, "w") as f:
+        with open(corrupt_file, "w", encoding="utf-8") as f:
             f.write("not valid json{{{")
 
         # Should not raise
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
         # Corrupt file should be skipped
         ids = [c["id"] for c in index_data["conversations"]]
@@ -993,14 +993,14 @@ class TestConversationMemoryServerDirect:
         """Test sync when index.json itself is corrupt"""
         server = ConversationMemoryServer(temp_storage, enable_sqlite=False)
         # Corrupt index.json
-        with open(server.index_file, "w") as f:
+        with open(server.index_file, "w", encoding="utf-8") as f:
             f.write("broken")
 
         # Create a valid conversation file
         date_folder = server.conversations_path / "2025" / "04-april"
         date_folder.mkdir(parents=True, exist_ok=True)
         conv_file = date_folder / "conv_20250401_000000_9999.json"
-        with open(conv_file, "w") as f:
+        with open(conv_file, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "id": "conv_20250401_000000_9999",
@@ -1016,7 +1016,7 @@ class TestConversationMemoryServerDirect:
         # Sync should recover and rebuild
         server._sync_index_from_files()
 
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
         assert len(index_data["conversations"]) == 1
 
@@ -1184,7 +1184,7 @@ Line 2: This contains the search term
 Line 3: Context after match
 Line 4: More content"""
 
-        with open(test_file, "w") as f:
+        with open(test_file, "w", encoding="utf-8") as f:
             f.write(content)
 
         preview = server._get_preview(test_file, ["search", "term"])
@@ -1220,7 +1220,7 @@ Line 4: More content"""
         server._update_index(conversation_data, fake_path)
 
         # Check index was updated
-        with open(server.index_file) as f:
+        with open(server.index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         assert len(index_data["conversations"]) > 0
@@ -1235,7 +1235,7 @@ Line 4: More content"""
 
         server._update_topics_index(test_topics, "test_conv_123")
 
-        with open(server.topics_file) as f:
+        with open(server.topics_file, encoding="utf-8") as f:
             topics_data = json.load(f)
 
         assert "python" in topics_data["topics"]

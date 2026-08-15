@@ -260,7 +260,7 @@ class TestClaudeImporterSaveConversation:
         assert file_path.name.endswith(".json")
 
         # Verify content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
 
         assert saved_data["id"] == conversation["id"]
@@ -327,7 +327,7 @@ class TestClaudeImporterIntegration:
         # (no separate conversation file is created)
         assert test_file.exists()
 
-        with open(test_file) as f:
+        with open(test_file, encoding="utf-8") as f:
             original_data = json.load(f)
 
         assert original_data["platform"] == "claude"

@@ -164,7 +164,7 @@ class TestStandaloneMemoryServer:
 
         # Check index.json
         index_file = Path(temp_storage) / "data" / "conversations" / "index.json"
-        with open(index_file) as f:
+        with open(index_file, encoding="utf-8") as f:
             index_data = json.load(f)
 
         assert len(index_data["conversations"]) == 1
@@ -175,7 +175,7 @@ class TestStandaloneMemoryServer:
 
         # Check topics.json
         topics_file = Path(temp_storage) / "data" / "conversations" / "topics.json"
-        with open(topics_file) as f:
+        with open(topics_file, encoding="utf-8") as f:
             topics_data = json.load(f)
 
         assert len(topics_data["topics"]) > 0
@@ -397,7 +397,7 @@ class TestCoverageTarget:
         index_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Write invalid JSON that will cause json.load() to raise ValueError
-        with open(index_file, "w") as f:
+        with open(index_file, "w", encoding="utf-8") as f:
             f.write('{"conversations": [invalid json content}')  # Invalid JSON syntax
 
         # This should trigger the exception handling when searching

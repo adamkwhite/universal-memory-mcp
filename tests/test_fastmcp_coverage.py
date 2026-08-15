@@ -442,7 +442,7 @@ class TestErrorHandlingAndEdgeCases:
         """Test index updates with corrupted JSON files"""
         # Corrupt the index file
         index_file = Path(temp_storage) / "data" / "conversations" / "index.json"
-        with open(index_file, "w") as f:
+        with open(index_file, "w", encoding="utf-8") as f:
             f.write("invalid json content")
 
         # This should either succeed by recreating the file or handle error gracefully

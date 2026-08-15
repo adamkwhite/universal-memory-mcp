@@ -26,9 +26,9 @@ class TestChatGPTImporter:
 
         # Load test data
         test_data_dir = Path(__file__).parent.parent / "data" / "chatgpt"
-        with open(test_data_dir / "valid_export.json") as f:
+        with open(test_data_dir / "valid_export.json", encoding="utf-8") as f:
             self.valid_export = json.load(f)
-        with open(test_data_dir / "malformed_export.json") as f:
+        with open(test_data_dir / "malformed_export.json", encoding="utf-8") as f:
             self.malformed_export = json.load(f)
 
     def test_importer_initialization(self):
@@ -300,7 +300,7 @@ class TestChatGPTImporter:
         assert file_path.name == "conv_test_123.json"
 
         # Check file content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
         assert saved_data == conversation
 

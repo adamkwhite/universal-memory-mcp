@@ -450,7 +450,7 @@ class TestCursorImporterSaveConversation:
         assert file_path.name.endswith(".json")
 
         # Verify content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
 
         assert saved_data["id"] == conversation["id"]
@@ -527,7 +527,7 @@ class TestCursorImporterIntegration:
         assert len(conversation_files) == 1
 
         # Verify conversation content
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             saved_conversation = json.load(f)
 
         assert saved_conversation["platform"] == "cursor"
@@ -576,7 +576,7 @@ class TestCursorImporterIntegration:
         conversation_files = [
             f for f in self.storage_path.rglob("*.json") if f.name != "complex_session.json"
         ]
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             conversation = json.load(f)
 
         assert "messages" in conversation

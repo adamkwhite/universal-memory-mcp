@@ -636,7 +636,7 @@ class TestConversationMigration:
             year_month_dir.mkdir(parents=True, exist_ok=True)
 
             conv_file = year_month_dir / f"{conv_data['id']}.json"
-            with open(conv_file, "w") as f:
+            with open(conv_file, "w", encoding="utf-8") as f:
                 json.dump(conv_data, f)
 
         # Create index file
@@ -655,7 +655,7 @@ class TestConversationMigration:
             "last_updated": "2025-06-12T10:00:00",
         }
 
-        with open(conversations_dir / "index.json", "w") as f:
+        with open(conversations_dir / "index.json", "w", encoding="utf-8") as f:
             json.dump(index_data, f)
 
         yield temp_dir

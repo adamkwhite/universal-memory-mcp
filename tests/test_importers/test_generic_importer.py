@@ -307,7 +307,7 @@ class TestGenericImporterCSVFormat:
         ]
 
         test_file = self.storage_path / "conversation.csv"
-        with open(test_file, "w", newline="") as f:
+        with open(test_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerows(csv_data)
 
@@ -639,7 +639,7 @@ class TestGenericImporterSaveConversation:
         assert file_path.name.endswith(".json")
 
         # Verify content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
 
         assert saved_data["id"] == conversation["id"]
@@ -762,7 +762,7 @@ class TestGenericImporterIntegration:
         assert len(conversation_files) == 1
 
         # Verify conversation content
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             saved_conversation = json.load(f)
 
         assert saved_conversation["platform"] == "generic"
@@ -822,7 +822,7 @@ For most applications, I'd recommend starting with SQLite FTS as it provides exc
         assert len(conversation_files) == 1
 
         # Verify conversation content
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             saved_conversation = json.load(f)
 
         assert saved_conversation["platform"] == "generic"
