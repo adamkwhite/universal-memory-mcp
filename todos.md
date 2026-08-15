@@ -25,11 +25,15 @@ This file maintains persistent todos across Claude Code sessions.
     comes from CI instead of someone else's laptop. Also moved import-root resolution
     into `pytest.ini` (`pythonpath = . src`) — the old `PYTHONPATH=$PWD:$PWD/src` export
     hard-codes the POSIX separator.
-  - [ ] **2.** 19 sync `open()` calls in `src/` have no `encoding=`, including every
-    read/write of `index.json` and `topics.json`, while the conversation files themselves
-    go through `aiofiles.open(..., encoding="utf-8")`. On any non-UTF-8 ANSI codepage the
-    store and its index are written in **different encodings** — the same "two stores that
-    disagree" class as #190–#196, in a new dimension. Real bug, not a test artifact.
+  - [x] **2.** 19 sync `open()` calls in `src/` had no `encoding=`. **Latent, not active** —
+    an earlier note here called it a live bug, which was wrong: the index/topics writers
+    pass `json.dump(..., indent=2)` with the default `ensure_ascii=True`, so the bytes on
+    disk are pure ASCII and survive cp1252 either way. It fixed **zero** of the 29 Windows
+    failures. Still worth closing: the conversation files *are* written `ensure_ascii=False`
+    through `aiofiles.open(..., encoding="utf-8")`, so making the index match "for
+    consistency" is an obvious future tidy-up that would instantly write an index Windows
+    cannot decode — the #190–#196 class again, about codecs. Guarded by a source-level
+    invariant test rather than a behavioural one, since the defect is invisible on Linux.
   - [ ] **3.** `skipif(os.name == "nt")` on the POSIX-permission tests (5 files use `chmod`).
   - [ ] **4.** Triage teardown errors against real tracebacks (likely SQLite connections
     outliving scope; Windows won't delete an open file, POSIX will).

@@ -79,7 +79,7 @@ class ConversationMigrator:
                 self.logger.warning(f"Index file not found: {self.index_file}")
                 return self._migrate_without_index()
 
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             conversations = index_data.get("conversations", [])
