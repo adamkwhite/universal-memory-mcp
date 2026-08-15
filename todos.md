@@ -20,8 +20,20 @@ This file maintains persistent todos across Claude Code sessions.
   holds against all 783 live records, 889 passed / 1 skipped locally.
 - [ ] **Windows portability.** Contributor's native-Windows run: 864 passed, 1 skipped,
   37 failures, 40 teardown errors — file-handle cleanup, POSIX path/permission
-  assumptions, console encoding, missing benchmark fixtures. Untestable without a
-  Windows runner in CI. See the follow-up note below.
+  assumptions, console encoding, missing benchmark fixtures. Agreed 5-step plan:
+  - [x] **1.** Non-blocking `windows-tests` job on `windows-latest` so the failure list
+    comes from CI instead of someone else's laptop. Also moved import-root resolution
+    into `pytest.ini` (`pythonpath = . src`) — the old `PYTHONPATH=$PWD:$PWD/src` export
+    hard-codes the POSIX separator.
+  - [ ] **2.** 19 sync `open()` calls in `src/` have no `encoding=`, including every
+    read/write of `index.json` and `topics.json`, while the conversation files themselves
+    go through `aiofiles.open(..., encoding="utf-8")`. On any non-UTF-8 ANSI codepage the
+    store and its index are written in **different encodings** — the same "two stores that
+    disagree" class as #190–#196, in a new dimension. Real bug, not a test artifact.
+  - [ ] **3.** `skipif(os.name == "nt")` on the POSIX-permission tests (5 files use `chmod`).
+  - [ ] **4.** Triage teardown errors against real tracebacks (likely SQLite connections
+    outliving scope; Windows won't delete an open file, POSIX will).
+  - [ ] **5.** Drop `continue-on-error` and add to branch protection once green.
 
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
 

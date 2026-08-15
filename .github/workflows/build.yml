@@ -106,6 +106,45 @@ jobs:
         run: |
           mypy --config-file=pyproject.toml src
 
+  # Windows portability run. Deliberately NON-BLOCKING and deliberately NOT in
+  # branch protection: the suite is currently red on Windows (~37 failures and
+  # ~40 teardown errors, reported against #200 by a contributor running it
+  # natively). This job exists to produce that failure list on demand instead
+  # of relying on someone else's machine -- every other job here is
+  # ubuntu-latest, and WSL is Linux for every purpose that matters.
+  #
+  # Known categories: cp1252 vs utf-8 (see the encoding follow-up), Windows
+  # refusing to delete still-open file handles at teardown, POSIX-only chmod
+  # assertions, and the benchmark fixture that CI generates separately.
+  #
+  # When this goes green: drop continue-on-error and add it to the ruleset.
+  windows-tests:
+    name: Tests (Windows, non-blocking)
+    needs: [changes]
+    if: >-
+      (github.event.pull_request.draft == false || github.event_name != 'pull_request')
+      && needs.changes.outputs.code == 'true'
+    runs-on: windows-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: '3.14'
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --no-build --no-install-project --extra dev
+
+      # No PYTHONPATH export here: pytest.ini's `pythonpath = . src` handles it
+      # with the right separator on both platforms.
+      # -rf prints a compact failure list at the end, which is the whole point.
+      - name: Run tests
+        run: uv run --no-sync python -m pytest tests/ --ignore=tests/test_performance_benchmarks.py -rf
+
   # Stage 2: Tests and SonarQube analysis (2-3 minutes)
   sonarqube:
     name: Tests & SonarQube Analysis
