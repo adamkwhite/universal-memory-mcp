@@ -117,7 +117,7 @@ class ConversationMemoryServer:
     def _init_index_files(self):
         """Initialize index and topics files if they don't exist"""
         if not self.index_file.exists():
-            with open(self.index_file, "w") as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(
                     {
                         "conversations": [],
@@ -127,7 +127,7 @@ class ConversationMemoryServer:
                 )
 
         if not self.topics_file.exists():
-            with open(self.topics_file, "w") as f:
+            with open(self.topics_file, "w", encoding="utf-8") as f:
                 json.dump(
                     {"topics": {}, "last_updated": datetime.now().isoformat()},
                     f,
@@ -136,7 +136,7 @@ class ConversationMemoryServer:
     def _sync_index_from_files(self):
         """Rebuild index.json from conversation files on disk if out of sync."""
         try:
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
             indexed_ids = {c["id"] for c in index_data.get("conversations", [])}
             indexed_paths = {
@@ -202,7 +202,7 @@ class ConversationMemoryServer:
 
         if added > 0:
             index_data["last_updated"] = datetime.now().isoformat()
-            with open(self.index_file, "w") as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(index_data, f, indent=2)
             self.logger.info(
                 f"Synced index.json: added {added} conversations ({len(indexed_ids)} total)"
@@ -494,7 +494,7 @@ class ConversationMemoryServer:
     def _remove_index_entry(self, conversation_id: str) -> None:
         """Remove a conversation's entry from index.json (rollback helper)."""
         try:
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             index_data["conversations"] = [
@@ -502,7 +502,7 @@ class ConversationMemoryServer:
             ]
             index_data["last_updated"] = datetime.now().isoformat()
 
-            with open(self.index_file, "w") as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(index_data, f, indent=2)
 
         except (OSError, ValueError, KeyError, TypeError) as e:
@@ -769,7 +769,7 @@ class ConversationMemoryServer:
     def _replace_index_entry(self, conversation_data: dict, file_path: Path):
         """Replace (or insert) the index.json entry for a conversation."""
         try:
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             relative_path = file_path.relative_to(self.storage_path)
@@ -799,7 +799,7 @@ class ConversationMemoryServer:
             index_data["conversations"] = conversations
             index_data["last_updated"] = datetime.now().isoformat()
 
-            with open(self.index_file, "w") as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(index_data, f, indent=2)
 
         except (OSError, ValueError, KeyError, TypeError) as e:
@@ -816,7 +816,7 @@ class ConversationMemoryServer:
         Topics still present after the update are left untouched so we don't
         churn ``added_at`` timestamps."""
         try:
-            with open(self.topics_file) as f:
+            with open(self.topics_file, encoding="utf-8") as f:
                 topics_data = json.load(f)
         except (OSError, ValueError) as e:
             self.logger.exception(f"Error loading topics index: {e}")
@@ -855,7 +855,7 @@ class ConversationMemoryServer:
         topics_data["last_updated"] = datetime.now().isoformat()
 
         try:
-            with open(self.topics_file, "w") as f:
+            with open(self.topics_file, "w", encoding="utf-8") as f:
                 json.dump(topics_data, f, indent=2)
         except OSError as e:
             self.logger.exception(f"Error writing topics index: {e}")
@@ -971,7 +971,7 @@ class ConversationMemoryServer:
         """Get a preview of a specific conversation"""
         try:
             # Load index to find the conversation
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             conversations = index_data.get("conversations", [])
@@ -998,7 +998,7 @@ class ConversationMemoryServer:
         """Update the main index with new conversation"""
         try:
             # Load existing index
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
 
             # Add new conversation to index
@@ -1016,7 +1016,7 @@ class ConversationMemoryServer:
             index_data["last_updated"] = datetime.now().isoformat()
 
             # Save updated index
-            with open(self.index_file, "w") as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(index_data, f, indent=2)
 
         except (OSError, ValueError, KeyError, TypeError) as e:
@@ -1026,7 +1026,7 @@ class ConversationMemoryServer:
         """Update the topics index with new conversation topics"""
         try:
             # Load existing topics index
-            with open(self.topics_file) as f:
+            with open(self.topics_file, encoding="utf-8") as f:
                 topics_data = json.load(f)
 
             topics_index = topics_data.get("topics", {})
@@ -1049,7 +1049,7 @@ class ConversationMemoryServer:
             topics_data["last_updated"] = datetime.now().isoformat()
 
             # Save updated topics index
-            with open(self.topics_file, "w") as f:
+            with open(self.topics_file, "w", encoding="utf-8") as f:
                 json.dump(topics_data, f, indent=2)
 
         except (OSError, ValueError, KeyError, TypeError) as e:
@@ -1093,7 +1093,7 @@ class ConversationMemoryServer:
     def _get_week_conversations(self, start_of_week: datetime, end_of_week: datetime) -> list[dict]:
         """Return conversations for the given week range"""
         try:
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_data = json.load(f)
             conversations = index_data.get("conversations", [])
         except (OSError, ValueError, KeyError, TypeError):
@@ -1191,7 +1191,7 @@ class ConversationMemoryServer:
         }
 
         try:
-            with open(self.index_file) as f:
+            with open(self.index_file, encoding="utf-8") as f:
                 index_entries = json.load(f).get("conversations", [])
             in_index = {c["file_path"] for c in index_entries if c.get("file_path")}
         except (OSError, ValueError, KeyError, TypeError):

@@ -328,7 +328,7 @@ async def main():
 
             # Helper function for async-safe file I/O
             def write_json():
-                with open(output_file, "w") as f:
+                with open(output_file, "w", encoding="utf-8") as f:
                     json.dump(results, f, indent=2)
 
             # Use asyncio.to_thread for async-safe file I/O
