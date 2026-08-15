@@ -13,6 +13,8 @@ SRC_DIR = Path(__file__).resolve().parents[2] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from conftest import requires_posix_permissions  # noqa: E402
+
 from exporters.base_exporter import Filters  # type: ignore[import-not-found]  # noqa: E402
 from exporters.chatgpt_exporter import (  # type: ignore[import-not-found]  # noqa: E402
     ChatgptExporter,
@@ -76,6 +78,7 @@ class TestChatgptExporterBasics:
         assert len(msg_nodes) == 1
         assert msg_nodes[0]["message"]["author"]["role"] == "assistant"
 
+    @requires_posix_permissions
     def test_unwritable_path_returns_error(self, tmp_path):
         _build_storage(tmp_path, [_universal_conversation()])
         bad = Path("/proc/no-such-dir/out.json")

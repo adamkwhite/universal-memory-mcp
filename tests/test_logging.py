@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from conftest import without_app_env
 
 from logging_config import (
     ColoredFormatter,
@@ -230,7 +231,7 @@ class TestLoggerHelpers:
 class TestInitDefaultLogging:
     """Test default logging initialization"""
 
-    @patch.dict(os.environ, {}, clear=True)
+    @without_app_env()
     @patch("logging_config.setup_logging")
     def test_init_default_logging_no_env(self, mock_setup):
         """Test default logging with no environment variables"""
@@ -290,7 +291,7 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == "/home/test/.claude-memory/logs/claude-mcp.log"
         assert kwargs["console_output"] is True
 
-    @patch.dict(os.environ, {}, clear=True)
+    @without_app_env()
     @patch("logging_config.setup_logging")
     @patch("logging_config.get_default_log_file", None)
     def test_init_default_logging_home_fallback_no_toctou(self, mock_setup):

@@ -749,7 +749,10 @@ class TestGenericImporterIntegration:
 
         # Verify metadata
         assert result.metadata["platform"] == "generic"
-        assert result.metadata["source_file"] == str(test_file)
+        # Resolve both sides: on Windows the fixture path arrives as the 8.3
+        # short name (C:\Users\RUNNER~1) while the importer records the long
+        # form (C:\Users\runneradmin). Same file, different spelling.
+        assert Path(result.metadata["source_file"]).resolve() == Path(test_file).resolve()
         assert result.metadata["format_type"] == "generic_json"
 
         # Verify conversation file was created (excludes source file)

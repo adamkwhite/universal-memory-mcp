@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from conftest import requires_posix_permissions
 
 from format_detector import FormatDetector
 from importers.chatgpt_importer import ChatGPTImporter
@@ -360,6 +361,7 @@ class TestImportWorkflowEdgeCases:
         assert result.conversations_imported == 0
         assert result.conversations_failed == 0
 
+    @requires_posix_permissions
     def test_import_file_permissions_error(self):
         """Test import with file permission issues."""
         # Create test file

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest  # type: ignore[import-not-found]
+from conftest import requires_posix_permissions
 
 # Make ``src/`` importable when tests are run via pytest from repo root.
 SRC_DIR = Path(__file__).resolve().parents[2] / "src"
@@ -432,6 +433,7 @@ class TestWriteJson:
         assert out.exists()
         assert json.loads(out.read_text()) == {"hello": "world"}
 
+    @requires_posix_permissions
     def test_unwritable_directory_raises(self, tmp_path):
         exp = _ConcreteExporter(tmp_path)
         # /proc is non-writable on Linux; using a known pseudo-fs path keeps

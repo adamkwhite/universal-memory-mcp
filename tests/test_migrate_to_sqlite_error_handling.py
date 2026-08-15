@@ -18,6 +18,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -165,7 +166,7 @@ def test_verify_migration_reports_error_on_real_search_failure(temp_storage):
         "2025/01-january/conv_1.json",
     )
 
-    with sqlite3.connect(migrator.search_db.db_path) as conn:
+    with closing(sqlite3.connect(migrator.search_db.db_path)) as conn, conn:
         conn.execute("UPDATE conversations SET topics_json = 'not-json' WHERE id = 'conv_1'")
         conn.commit()
 

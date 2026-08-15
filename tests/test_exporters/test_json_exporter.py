@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest  # type: ignore[import-not-found]
+from conftest import requires_posix_permissions
 
 # Ensure ``src/`` is importable so we can use bare ``exporters.X`` imports
 # (matching the pattern used by tests/test_config.py).
@@ -67,6 +68,7 @@ class TestJsonExporterBasics:
         assert payload["conversation_count"] == 0
         assert payload["conversations"] == []
 
+    @requires_posix_permissions
     def test_export_to_unwritable_path_returns_error(self, tmp_path):
         _build_storage(tmp_path, [_universal_conversation()])
         bad = Path("/proc/no-such-dir/out.json")

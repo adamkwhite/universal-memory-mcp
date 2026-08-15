@@ -16,6 +16,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -77,7 +78,7 @@ async def test_add_conversation_rolls_back_on_real_sqlite_failure(server):
     if not server.use_sqlite_search:
         pytest.skip("SQLite search unavailable")
 
-    with sqlite3.connect(server.search_db.db_path) as conn:
+    with closing(sqlite3.connect(server.search_db.db_path)) as conn, conn:
         conn.execute("DROP TABLE conversations")
         conn.commit()
 
@@ -120,7 +121,7 @@ async def test_add_conversation_rollback_leaves_other_conversations_intact(serve
     assert good["status"] == "success"
     good_id = Path(good["file_path"]).stem
 
-    with sqlite3.connect(server.search_db.db_path) as conn:
+    with closing(sqlite3.connect(server.search_db.db_path)) as conn, conn:
         conn.execute("DROP TABLE conversations")
         conn.commit()
 
@@ -174,7 +175,7 @@ async def test_update_conversation_rolls_back_on_real_sqlite_failure(server):
     original_index = _index_conversations(server)
     original_topics = _topics_index(server)
 
-    with sqlite3.connect(server.search_db.db_path) as conn:
+    with closing(sqlite3.connect(server.search_db.db_path)) as conn, conn:
         conn.execute("DROP TABLE conversations")
         conn.commit()
 

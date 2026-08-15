@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from conftest import requires_posix_permissions
 
 from conversation_memory import ConversationMemoryServer
 
@@ -106,6 +107,7 @@ class TestCompleteEdgeCaseCoverage:
             assert any("error" in str(result) for result in results)
         # If empty, that's also valid error handling behavior
 
+    @requires_posix_permissions
     def test_get_preview_exception_handling_unreadable_file(self, server, temp_storage):
         """Test _get_preview exception path via unreadable file (lines 139-140).
 
@@ -127,6 +129,7 @@ class TestCompleteEdgeCaseCoverage:
             test_file.chmod(0o644)
 
     @pytest.mark.asyncio
+    @requires_posix_permissions
     async def test_add_conversation_exception_handling(self, server, temp_storage):
         """Test add conversation with various exception scenarios"""
         # Test with a read-only conversations directory
@@ -432,6 +435,7 @@ class TestCompleteEdgeCaseCoverage:
         assert preview == "Conversation not found"
 
     @pytest.mark.asyncio
+    @requires_posix_permissions
     async def test_get_preview_exception_handling(self, server):
         """Test get_preview exception handling (lines 254-255)"""
         # Make index file unreadable to trigger exception

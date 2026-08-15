@@ -514,7 +514,10 @@ class TestCursorImporterIntegration:
 
         # Verify metadata
         assert result.metadata["platform"] == "cursor"
-        assert result.metadata["source_file"] == str(test_file)
+        # Resolve both sides: on Windows the fixture path arrives as the 8.3
+        # short name (C:\Users\RUNNER~1) while the importer records the long
+        # form (C:\Users\runneradmin). Same file, different spelling.
+        assert Path(result.metadata["source_file"]).resolve() == Path(test_file).resolve()
         assert result.metadata["import_format"] == "cursor_session"
 
         # Verify conversation file was created (exclude source file)
