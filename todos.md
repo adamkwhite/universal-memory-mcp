@@ -54,9 +54,14 @@ This file maintains persistent todos across Claude Code sessions.
     after an explicit `gc.collect()`. A real defect, not a test artifact — Linux hides it
     because an open file can still be unlinked, and a long-lived MCP server has no
     guarantee about when GC runs. Fixed at the shared layer with a `_connect()` helper.
-  - [ ] **5.** Drop `continue-on-error` from `windows-tests` and add it to ruleset 5957219
-    now that it is green. Deliberately left for a follow-up PR so the green run is observed
-    on main first, not just on the branch that produced it.
+  - [x] **5.** `continue-on-error` dropped and the job renamed `Tests (Windows)` — the
+    "non-blocking" suffix was part of the check name. Confirmed green on **main** (not just
+    on the branch that produced it) before flipping. Added to ruleset 5957219 as a 6th
+    required check.
+
+  The 14 Windows skips are deliberate and marked, not silent: POSIX file-mode bits
+  (`requires_posix_permissions`) and the `HOME`-based log-path fallback
+  (`requires_posix_home`), both in `tests/conftest.py` with the reasoning inline.
 
 **Windows follow-up worth noting (not blocking):** `logging_config.init_default_logging`
 falls back to `os.getenv("HOME")` when `get_default_log_file` is unavailable. Windows

@@ -106,26 +106,24 @@ jobs:
         run: |
           mypy --config-file=pyproject.toml src
 
-  # Windows portability run. Deliberately NON-BLOCKING and deliberately NOT in
-  # branch protection: the suite is currently red on Windows (~37 failures and
-  # ~40 teardown errors, reported against #200 by a contributor running it
-  # natively). This job exists to produce that failure list on demand instead
-  # of relying on someone else's machine -- every other job here is
-  # ubuntu-latest, and WSL is Linux for every purpose that matters.
+  # Windows portability run. Introduced non-blocking in #202 to produce a
+  # failure list (29 failed / 40 teardown errors), fixed across #204 and #205,
+  # and green on main since 4c1e944 at 875 passed / 14 skipped. Blocking as of
+  # this change -- every other job here is ubuntu-latest, and WSL is Linux for
+  # every purpose that matters, so without this nothing catches a Windows
+  # regression before a contributor does.
   #
-  # Known categories: cp1252 vs utf-8 (see the encoding follow-up), Windows
-  # refusing to delete still-open file handles at teardown, POSIX-only chmod
-  # assertions, and the benchmark fixture that CI generates separately.
-  #
-  # When this goes green: drop continue-on-error and add it to the ruleset.
+  # The 14 skips are deliberate and marked: POSIX file-mode bits (chmod on
+  # Windows only toggles read-only) and the HOME-based log-path fallback
+  # (Windows resolves ~ from USERPROFILE and never sets HOME). See
+  # requires_posix_permissions / requires_posix_home in tests/conftest.py.
   windows-tests:
-    name: Tests (Windows, non-blocking)
+    name: Tests (Windows)
     needs: [changes]
     if: >-
       (github.event.pull_request.draft == false || github.event_name != 'pull_request')
       && needs.changes.outputs.code == 'true'
     runs-on: windows-latest
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
