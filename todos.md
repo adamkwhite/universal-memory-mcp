@@ -31,8 +31,15 @@ This file maintains persistent todos across Claude Code sessions.
     store and its index are written in **different encodings** — the same "two stores that
     disagree" class as #190–#196, in a new dimension. Real bug, not a test artifact.
   - [ ] **3.** `skipif(os.name == "nt")` on the POSIX-permission tests (5 files use `chmod`).
-  - [ ] **4.** Triage teardown errors against real tracebacks (likely SQLite connections
-    outliving scope; Windows won't delete an open file, POSIX will).
+  - [x] **4.** Teardown errors triaged — and the hypothesis was right for the wrong reason.
+    All 40 were one shape: `TemporaryDirectory()` cleanup hitting an open handle. Cause is
+    that `with sqlite3.connect(...) as conn` manages the **transaction**, not the
+    connection — it commits and leaves the handle open until GC. All 11 call sites in
+    `search_database.py` used that form and the module had **zero** `.close()` calls.
+    Measured: 1 handle after `__init__`, 6 after five adds, 11 after five searches, 0 only
+    after an explicit `gc.collect()`. A real defect, not a test artifact — Linux hides it
+    because an open file can still be unlinked, and a long-lived MCP server has no
+    guarantee about when GC runs. Fixed at the shared layer with a `_connect()` helper.
   - [ ] **5.** Drop `continue-on-error` and add to branch protection once green.
 
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
