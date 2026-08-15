@@ -51,7 +51,7 @@ class TestCursorImporter:
     def test_import_file_invalid_json(self):
         """Test importing invalid JSON file."""
         test_file = self.storage_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -65,7 +65,7 @@ class TestCursorImporter:
         invalid_data = {"not_cursor": "data"}
 
         test_file = self.storage_path / "invalid_cursor.json"
-        test_file.write_text(json.dumps(invalid_data))
+        test_file.write_text(json.dumps(invalid_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -97,7 +97,7 @@ class TestCursorImporter:
         }
 
         test_file = self.storage_path / "cursor_session.json"
-        test_file.write_text(json.dumps(cursor_data))
+        test_file.write_text(json.dumps(cursor_data), encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -112,7 +112,7 @@ class TestCursorImporter:
     def test_import_file_general_exception(self):
         """Test import with general exception."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"session_id": "test"}')
+        test_file.write_text('{"session_id": "test"}', encoding="utf-8")
 
         with patch.object(
             self.importer,
@@ -502,7 +502,7 @@ class TestCursorImporterIntegration:
         }
 
         test_file = self.storage_path / "complete_session.json"
-        test_file.write_text(json.dumps(cursor_data))
+        test_file.write_text(json.dumps(cursor_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -565,7 +565,7 @@ class TestCursorImporterIntegration:
         }
 
         test_file = self.storage_path / "complex_session.json"
-        test_file.write_text(json.dumps(complex_data))
+        test_file.write_text(json.dumps(complex_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 

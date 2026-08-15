@@ -335,7 +335,7 @@ class TestBaseImporter:
     def test_import_file_implementation(self):
         """Test the concrete import_file implementation."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"test": "data"}')
+        test_file.write_text('{"test": "data"}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 

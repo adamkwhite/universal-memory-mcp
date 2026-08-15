@@ -1,14 +1,12 @@
 """Test logging functionality for Claude Memory MCP system"""
 
-import contextlib
 import logging
 import os
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from conftest import without_app_env
+from conftest import requires_posix_home, without_app_env
 
 from logging_config import (
     ColoredFormatter,
@@ -34,51 +32,45 @@ class TestLoggingSetup:
         assert len(logger.handlers) == 1
         assert isinstance(logger.handlers[0], logging.StreamHandler)
 
-    def test_setup_logging_file_only(self):
+    # These used NamedTemporaryFile(delete=False) plus a manual os.unlink in a
+    # finally. That leaves two handles on one path -- the NamedTemporaryFile's
+    # own, still open inside its with-block, and the FileHandler setup_logging
+    # attaches -- and then deletes it underneath both. POSIX allows that;
+    # Windows raises WinError 32. tmp_path needs no manual cleanup, and the
+    # autouse _close_file_log_handlers fixture in conftest closes the handler.
+
+    def test_setup_logging_file_only(self, tmp_path):
         """Test setting up file-only logging"""
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            try:
-                logger = setup_logging(
-                    log_level="INFO",
-                    console_output=False,
-                    log_file=temp_file.name,
-                )
+        logger = setup_logging(
+            log_level="INFO",
+            console_output=False,
+            log_file=str(tmp_path / "file_only.log"),
+        )
 
-                assert logger.level == logging.INFO
-                assert len(logger.handlers) == 1
-                assert hasattr(logger.handlers[0], "baseFilename")
+        assert logger.level == logging.INFO
+        assert len(logger.handlers) == 1
+        assert hasattr(logger.handlers[0], "baseFilename")
 
-            finally:
-                os.unlink(temp_file.name)
-
-    def test_setup_logging_both_console_and_file(self):
+    def test_setup_logging_both_console_and_file(self, tmp_path):
         """Test setting up both console and file logging"""
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            try:
-                logger = setup_logging(
-                    log_level="WARNING",
-                    console_output=True,
-                    log_file=temp_file.name,
-                )
+        logger = setup_logging(
+            log_level="WARNING",
+            console_output=True,
+            log_file=str(tmp_path / "both.log"),
+        )
 
-                assert logger.level == logging.WARNING
-                assert len(logger.handlers) == 2
+        assert logger.level == logging.WARNING
+        assert len(logger.handlers) == 2
 
-            finally:
-                os.unlink(temp_file.name)
-
-    def test_log_file_rotation_config(self):
+    def test_log_file_rotation_config(self, tmp_path):
         """Test log file rotation configuration"""
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            try:
-                logger = setup_logging(log_file=temp_file.name, max_bytes=1024, backup_count=3)
+        logger = setup_logging(
+            log_file=str(tmp_path / "rotation.log"), max_bytes=1024, backup_count=3
+        )
 
-                file_handler = next(h for h in logger.handlers if hasattr(h, "maxBytes"))
-                assert file_handler.maxBytes == 1024
-                assert file_handler.backupCount == 3
-
-            finally:
-                os.unlink(temp_file.name)
+        file_handler = next(h for h in logger.handlers if hasattr(h, "maxBytes"))
+        assert file_handler.maxBytes == 1024
+        assert file_handler.backupCount == 3
 
 
 class TestColoredFormatter:
@@ -244,7 +236,13 @@ class TestInitDefaultLogging:
         assert call_args.kwargs["log_level"] == "INFO"
         # Now provides default path
         assert call_args.kwargs["log_file"] is not None
-        assert call_args.kwargs["log_file"].endswith(".claude-memory/logs/claude-mcp.log")
+        # Component comparison, not a "/"-joined suffix: str(Path) uses the
+        # platform separator, so the literal never matches on Windows.
+        assert Path(call_args.kwargs["log_file"]).parts[-3:] == (
+            ".claude-memory",
+            "logs",
+            "claude-mcp.log",
+        )
         assert call_args.kwargs["console_output"] is False
 
     @patch.dict(
@@ -266,6 +264,7 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == "/tmp/test.log"
         assert kwargs["console_output"] is False
 
+    @requires_posix_home
     @patch.dict(os.environ, {"HOME": "/home/user"}, clear=True)
     @patch("logging_config.setup_logging")
     def test_init_default_logging_home_fallback(self, mock_setup):
@@ -279,6 +278,7 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == expected_log_file
         assert kwargs["console_output"] is False
 
+    @requires_posix_home
     @patch.dict(os.environ, {"CLAUDE_MCP_CONSOLE_OUTPUT": "true", "HOME": "/home/test"})
     @patch("logging_config.setup_logging")
     def test_init_default_logging_console_enabled(self, mock_setup):
@@ -291,6 +291,7 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == "/home/test/.claude-memory/logs/claude-mcp.log"
         assert kwargs["console_output"] is True
 
+    @requires_posix_home
     @without_app_env()
     @patch("logging_config.setup_logging")
     @patch("logging_config.get_default_log_file", None)
@@ -326,45 +327,33 @@ class TestInitDefaultLogging:
 class TestLoggingIntegration:
     """Test logging integration with actual file operations"""
 
-    def test_file_logging_creates_directories(self):
+    def test_file_logging_creates_directories(self, tmp_path):
         """Test that file logging creates necessary directories"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "nested" / "dirs" / "test.log"
+        log_file = tmp_path / "nested" / "dirs" / "test.log"
 
-            logger = setup_logging(log_file=str(log_file), console_output=False)
-            logger.info("Test message")
+        logger = setup_logging(log_file=str(log_file), console_output=False)
+        logger.info("Test message")
 
-            assert log_file.exists()
-            assert log_file.read_text().strip().endswith("Test message")
+        assert log_file.exists()
+        assert log_file.read_text(encoding="utf-8").strip().endswith("Test message")
 
-    def test_log_rotation_configuration(self):
+    def test_log_rotation_configuration(self, tmp_path):
         """Test that log rotation is properly configured"""
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            try:
-                logger = setup_logging(
-                    log_file=temp_file.name,
-                    max_bytes=100,  # Small size to trigger rotation
-                    backup_count=2,
-                )
+        logger = setup_logging(
+            log_file=str(tmp_path / "rotating.log"),
+            max_bytes=100,  # Small size to trigger rotation
+            backup_count=2,
+        )
 
-                # Write enough data to trigger rotation
-                for i in range(50):
-                    logger.info(f"This is a test message number {i} with some padding")
+        # Write enough data to trigger rotation
+        for i in range(50):
+            logger.info(f"This is a test message number {i} with some padding")
 
-                # Check that backup files are created
-                base_name = temp_file.name
-                f"{base_name}.1"
-
-                # May or may not create backup depending on exact size, but config should be set
-                file_handler = next(h for h in logger.handlers if hasattr(h, "maxBytes"))
-                assert file_handler.maxBytes == 100
-                assert file_handler.backupCount == 2
-
-            finally:
-                # Clean up potential backup files
-                for suffix in ["", ".1", ".2"]:
-                    with contextlib.suppress(FileNotFoundError):
-                        os.unlink(f"{temp_file.name}{suffix}")
+        # Rotation may or may not have fired depending on exact sizes; the
+        # assertion is that the handler carries the configuration.
+        file_handler = next(h for h in logger.handlers if hasattr(h, "maxBytes"))
+        assert file_handler.maxBytes == 100
+        assert file_handler.backupCount == 2
 
 
 class TestLoggingExceptionHandling:

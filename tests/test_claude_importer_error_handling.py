@@ -56,7 +56,7 @@ def test_import_file_reports_failure_on_real_non_dict_json_content(importer, tem
     TypeError -- must be reported via ImportResult(success=False), not
     propagate."""
     scalar_file = Path(temp_dir) / "weird.json"
-    scalar_file.write_text("42")
+    scalar_file.write_text("42", encoding="utf-8")
 
     result = importer.import_file(scalar_file)
 

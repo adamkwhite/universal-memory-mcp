@@ -51,7 +51,7 @@ class TestClaudeImporter:
     def test_import_file_general_exception(self):
         """Test import with general exception."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"test": "data"}')
+        test_file.write_text('{"test": "data"}', encoding="utf-8")
 
         with patch.object(
             self.importer, "_import_json_format", side_effect=Exception("Test error")
@@ -98,7 +98,7 @@ class TestClaudeImporterJSONFormat:
         }
 
         test_file = self.storage_path / "claude_memory.json"
-        test_file.write_text(json.dumps(memory_data))
+        test_file.write_text(json.dumps(memory_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -112,7 +112,7 @@ class TestClaudeImporterJSONFormat:
     def test_import_json_invalid_format(self):
         """Test importing invalid JSON."""
         test_file = self.storage_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -126,7 +126,7 @@ class TestClaudeImporterJSONFormat:
         unsupported_data = {"not_claude": "data", "random": "fields"}
 
         test_file = self.storage_path / "unsupported.json"
-        test_file.write_text(json.dumps(unsupported_data))
+        test_file.write_text(json.dumps(unsupported_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -156,7 +156,7 @@ class TestClaudeImporterTextFormat:
 """
 
         test_file = self.storage_path / "claude_web.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -169,7 +169,7 @@ class TestClaudeImporterTextFormat:
     def test_import_text_exception(self):
         """Test text import with exception."""
         test_file = self.storage_path / "test.txt"
-        test_file.write_text("Test content")
+        test_file.write_text("Test content", encoding="utf-8")
 
         with patch.object(
             self.importer, "_import_text_format", side_effect=Exception("Parse error")
@@ -301,7 +301,7 @@ class TestClaudeImporterIntegration:
         }
 
         test_file = self.storage_path / "claude_e2e_test.json"
-        test_file.write_text(json.dumps(claude_data))
+        test_file.write_text(json.dumps(claude_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 

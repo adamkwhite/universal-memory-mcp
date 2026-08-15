@@ -247,7 +247,7 @@ class TestLoadConversations:
     def test_handles_corrupt_index(self, tmp_path):
         convs_root = tmp_path / "data" / "conversations"
         convs_root.mkdir(parents=True)
-        (convs_root / "index.json").write_text("not json{")
+        (convs_root / "index.json").write_text("not json{", encoding="utf-8")
         exp = _ConcreteExporter(tmp_path)
         assert exp.load_conversations() == []
 
@@ -263,7 +263,7 @@ class TestLoadConversations:
         convs_root = tmp_path / "data" / "conversations"
         convs_root.mkdir(parents=True)
         (convs_root / "index.json").write_text(
-            json.dumps({"conversations": [{"id": "x", "title": "no path"}]})
+            json.dumps({"conversations": [{"id": "x", "title": "no path"}]}), encoding="utf-8"
         )
         exp = _ConcreteExporter(tmp_path)
         assert exp.load_conversations() == []
@@ -272,7 +272,7 @@ class TestLoadConversations:
         _build_storage(tmp_path, [_legacy_conversation()])
         # Corrupt the conversation file
         for f in (tmp_path / "data" / "conversations").rglob("conv_*.json"):
-            f.write_text("totally not json")
+            f.write_text("totally not json", encoding="utf-8")
         exp = _ConcreteExporter(tmp_path)
         assert exp.load_conversations() == []
 
@@ -431,7 +431,7 @@ class TestWriteJson:
         out = tmp_path / "subdir" / "deeper" / "out.json"
         exp.write_json(out, {"hello": "world"})
         assert out.exists()
-        assert json.loads(out.read_text()) == {"hello": "world"}
+        assert json.loads(out.read_text(encoding="utf-8")) == {"hello": "world"}
 
     @requires_posix_permissions
     def test_unwritable_directory_raises(self, tmp_path):

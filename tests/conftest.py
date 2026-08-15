@@ -105,3 +105,18 @@ requires_posix_permissions = pytest.mark.skipif(
     os.name == "nt",
     reason="POSIX file-mode bits; chmod on Windows only toggles the read-only attribute",
 )
+
+
+#: Skip marker for tests that exercise the ``HOME``-based log-file fallback.
+#:
+#: ``logging_config.init_default_logging`` falls back to
+#: ``os.getenv("HOME")`` when ``get_default_log_file`` is unavailable, and
+#: these tests assert the POSIX paths that produces. Windows resolves ``~``
+#: from ``USERPROFILE`` (or ``HOMEDRIVE`` + ``HOMEPATH``) and does not consult
+#: ``HOME`` at all, so setting it changes nothing and the branch is
+#: unreachable there. The fallback being POSIX-only is a real (minor) gap in
+#: src -- tracked in todos.md -- not something these tests can assert around.
+requires_posix_home = pytest.mark.skipif(
+    os.name == "nt",
+    reason="HOME-based log path fallback; Windows resolves ~ from USERPROFILE, not HOME",
+)

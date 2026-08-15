@@ -51,7 +51,8 @@ def _write_conversation_file(conversations_dir: Path, conv_id: str) -> Path:
                 "created_at": "2025-01-01T00:00:00",
                 "topics": ["python"],
             }
-        )
+        ),
+        encoding="utf-8",
     )
     return path
 
@@ -74,7 +75,7 @@ def test_migrate_all_conversations_reports_error_on_malformed_index_json(temp_st
     the returned stats dict rather than raising out of the MCP tool call."""
     conversations_dir = Path(temp_storage) / "data" / "conversations"
     conversations_dir.mkdir(parents=True, exist_ok=True)
-    (conversations_dir / "index.json").write_text("{not valid json,,,")
+    (conversations_dir / "index.json").write_text("{not valid json,,,", encoding="utf-8")
 
     migrator = ConversationMigrator(temp_storage, use_data_dir=True)
     stats = migrator.migrate_all_conversations()
@@ -109,7 +110,7 @@ def test_migrate_single_conversation_skips_entry_missing_file_path_and_keeps_bat
             },
         ]
     }
-    (conversations_dir / "index.json").write_text(json.dumps(index_data))
+    (conversations_dir / "index.json").write_text(json.dumps(index_data), encoding="utf-8")
 
     migrator = ConversationMigrator(temp_storage, use_data_dir=True)
     stats = migrator.migrate_all_conversations()
@@ -129,7 +130,7 @@ def test_migrate_json_file_skips_unparseable_file_and_keeps_batch_going(temp_sto
     _write_conversation_file(conversations_dir, "conv_good")
 
     garbage_dir = conversations_dir / "2025" / "01-january"
-    (garbage_dir / "corrupt.json").write_text("this is not { valid json at all")
+    (garbage_dir / "corrupt.json").write_text("this is not { valid json at all", encoding="utf-8")
 
     # No index.json written -> migrate_all_conversations falls through to
     # the directory-scan path (_migrate_without_index -> _migrate_json_file).

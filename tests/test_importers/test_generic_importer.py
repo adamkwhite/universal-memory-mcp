@@ -53,7 +53,7 @@ class TestGenericImporter:
     def test_import_file_general_exception(self):
         """Test import with general exception."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"test": "data"}')
+        test_file.write_text('{"test": "data"}', encoding="utf-8")
 
         with patch.object(
             self.importer, "_import_json_format", side_effect=Exception("Test error")
@@ -86,7 +86,7 @@ class TestGenericImporterJSONFormat:
         }
 
         test_file = self.storage_path / "simple.json"
-        test_file.write_text(json.dumps(json_data))
+        test_file.write_text(json.dumps(json_data), encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -112,7 +112,7 @@ class TestGenericImporterJSONFormat:
         ]
 
         test_file = self.storage_path / "array.json"
-        test_file.write_text(json.dumps(json_data))
+        test_file.write_text(json.dumps(json_data), encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -125,7 +125,7 @@ class TestGenericImporterJSONFormat:
     def test_import_json_invalid_format(self):
         """Test importing invalid JSON."""
         test_file = self.storage_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -139,7 +139,7 @@ class TestGenericImporterJSONFormat:
         json_data = "just a string"
 
         test_file = self.storage_path / "unsupported.json"
-        test_file.write_text(json.dumps(json_data))
+        test_file.write_text(json.dumps(json_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -219,7 +219,7 @@ class TestGenericImporterTextFormat:
 """
 
         test_file = self.storage_path / "dialogue.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -247,7 +247,7 @@ Final response from assistant
 """
 
         test_file = self.storage_path / "blocks.txt"
-        test_file.write_text(text_content)
+        test_file.write_text(text_content, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -262,7 +262,7 @@ Final response from assistant
         plain_text = "This is just a plain text file with some content that should be imported as a single conversation."
 
         test_file = self.storage_path / "plain.txt"
-        test_file.write_text(plain_text)
+        test_file.write_text(plain_text, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -275,7 +275,7 @@ Final response from assistant
     def test_import_text_exception(self):
         """Test text import with exception."""
         test_file = self.storage_path / "test.txt"
-        test_file.write_text("Test content")
+        test_file.write_text("Test content", encoding="utf-8")
 
         with patch.object(
             self.importer, "_parse_text_content", side_effect=Exception("Parse error")
@@ -323,7 +323,7 @@ class TestGenericImporterCSVFormat:
         """Test importing empty CSV file."""
         test_file = self.storage_path / "empty.csv"
         # Touch an empty file (no contents needed for the empty-CSV test).
-        test_file.write_text("")
+        test_file.write_text("", encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -334,7 +334,7 @@ class TestGenericImporterCSVFormat:
     def test_import_csv_exception(self):
         """Test CSV import with exception."""
         test_file = self.storage_path / "test.csv"
-        test_file.write_text('invalid,csv,format\nwith,unbalanced,quotes"')
+        test_file.write_text('invalid,csv,format\nwith,unbalanced,quotes"', encoding="utf-8")
 
         with patch("csv.DictReader", side_effect=Exception("CSV error")):
             result = self.importer.import_file(test_file)
@@ -364,7 +364,7 @@ class TestGenericImporterXMLFormat:
 </conversation>"""
 
         test_file = self.storage_path / "conversation.xml"
-        test_file.write_text(xml_content)
+        test_file.write_text(xml_content, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -379,7 +379,7 @@ class TestGenericImporterXMLFormat:
         xml_content = "<conversation><unclosed>tag</conversation>"
 
         test_file = self.storage_path / "invalid.xml"
-        test_file.write_text(xml_content)
+        test_file.write_text(xml_content, encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -391,7 +391,7 @@ class TestGenericImporterXMLFormat:
     def test_import_xml_exception(self):
         """Test XML import with general exception."""
         test_file = self.storage_path / "test.xml"
-        test_file.write_text("<conversation></conversation>")
+        test_file.write_text("<conversation></conversation>", encoding="utf-8")
 
         with patch("xml.etree.ElementTree.parse", side_effect=Exception("XML error")):
             result = self.importer.import_file(test_file)
@@ -737,7 +737,7 @@ class TestGenericImporterIntegration:
         }
 
         test_file = self.storage_path / "e2e_test.json"
-        test_file.write_text(json.dumps(json_data))
+        test_file.write_text(json.dumps(json_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -801,7 +801,7 @@ For most applications, I'd recommend starting with SQLite FTS as it provides exc
 """
 
         test_file = self.storage_path / "conversation_log.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -834,7 +834,7 @@ For most applications, I'd recommend starting with SQLite FTS as it provides exc
     def test_unsupported_file_extension(self):
         """Test handling of unsupported file extensions."""
         test_file = self.storage_path / "unsupported.xyz"
-        test_file.write_text("Some content")
+        test_file.write_text("Some content", encoding="utf-8")
 
         # Should fall back to text parsing
         with patch.object(self.importer, "_save_conversation") as mock_save:

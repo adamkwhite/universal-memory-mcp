@@ -54,7 +54,7 @@ class TestImportIntegration:
         """Test complete ChatGPT import workflow."""
         # Create test file
         test_file = self.storage_path / "chatgpt_export.json"
-        test_file.write_text(json.dumps(self.chatgpt_data))
+        test_file.write_text(json.dumps(self.chatgpt_data), encoding="utf-8")
 
         # Initialize importer
         importer = ChatGPTImporter(self.storage_path)
@@ -93,7 +93,7 @@ class TestImportIntegration:
         """Test complete import workflow with format detection."""
         # Create test file
         test_file = self.storage_path / "unknown_format.json"
-        test_file.write_text(json.dumps(self.chatgpt_data))
+        test_file.write_text(json.dumps(self.chatgpt_data), encoding="utf-8")
 
         # Detect format
         detector = FormatDetector()
@@ -142,7 +142,7 @@ class TestImportIntegration:
         test_files = []
         for i, data in enumerate(files_data):
             file_path = self.storage_path / f"export_{i}.json"
-            file_path.write_text(json.dumps(data))
+            file_path.write_text(json.dumps(data), encoding="utf-8")
             test_files.append(file_path)
 
         # Import all files
@@ -178,7 +178,7 @@ class TestImportIntegration:
         }
 
         test_file = self.storage_path / "mixed_export.json"
-        test_file.write_text(json.dumps(mixed_data))
+        test_file.write_text(json.dumps(mixed_data), encoding="utf-8")
 
         # Import with error handling
         importer = ChatGPTImporter(self.storage_path)
@@ -205,7 +205,7 @@ class TestImportIntegration:
     def test_conversation_format_consistency(self):
         """Test that imported conversations maintain consistent format."""
         test_file = self.storage_path / "consistency_test.json"
-        test_file.write_text(json.dumps(self.chatgpt_data))
+        test_file.write_text(json.dumps(self.chatgpt_data), encoding="utf-8")
 
         importer = ChatGPTImporter(self.storage_path)
 
@@ -279,7 +279,7 @@ class TestImportIntegration:
             large_data["conversations"].append(conv)
 
         test_file = self.storage_path / "performance_test.json"
-        test_file.write_text(json.dumps(large_data))
+        test_file.write_text(json.dumps(large_data), encoding="utf-8")
 
         # Import with timing
         import time
@@ -321,7 +321,7 @@ class TestImportIntegration:
         }
 
         test_file = self.storage_path / "validation_test.json"
-        test_file.write_text(json.dumps(test_data))
+        test_file.write_text(json.dumps(test_data), encoding="utf-8")
 
         importer = ChatGPTImporter(self.storage_path)
 
@@ -351,7 +351,7 @@ class TestImportWorkflowEdgeCases:
         empty_data = {"conversations": []}
 
         test_file = self.storage_path / "empty.json"
-        test_file.write_text(json.dumps(empty_data))
+        test_file.write_text(json.dumps(empty_data), encoding="utf-8")
 
         importer = ChatGPTImporter(self.storage_path)
         result = importer.import_file(test_file)
@@ -366,7 +366,7 @@ class TestImportWorkflowEdgeCases:
         """Test import with file permission issues."""
         # Create test file
         test_file = self.storage_path / "permission_test.json"
-        test_file.write_text('{"conversations": []}')
+        test_file.write_text('{"conversations": []}', encoding="utf-8")
 
         # Make file unreadable (if running with appropriate permissions)
         try:
@@ -400,7 +400,7 @@ class TestImportWorkflowEdgeCases:
         }
 
         test_file = self.storage_path / "storage_test.json"
-        test_file.write_text(json.dumps(test_data))
+        test_file.write_text(json.dumps(test_data), encoding="utf-8")
 
         # Import should create storage directories
         result = importer.import_file(test_file)

@@ -232,7 +232,7 @@ class TestChatGPTImporter:
     def test_import_file_invalid_json(self):
         """Test importing file with invalid JSON."""
         invalid_file = self.storage_path / "invalid.json"
-        invalid_file.write_text("{ invalid json }")
+        invalid_file.write_text("{ invalid json }", encoding="utf-8")
 
         result = self.importer.import_file(invalid_file)
 
@@ -244,7 +244,7 @@ class TestChatGPTImporter:
     def test_import_file_invalid_format(self):
         """Test importing file with invalid ChatGPT format."""
         invalid_file = self.storage_path / "invalid.json"
-        invalid_file.write_text('{"not_conversations": []}')
+        invalid_file.write_text('{"not_conversations": []}', encoding="utf-8")
 
         result = self.importer.import_file(invalid_file)
 
@@ -256,7 +256,7 @@ class TestChatGPTImporter:
     def test_import_file_valid(self):
         """Test importing valid ChatGPT export file."""
         valid_file = self.storage_path / "valid.json"
-        valid_file.write_text(json.dumps(self.valid_export))
+        valid_file.write_text(json.dumps(self.valid_export), encoding="utf-8")
 
         # Mock save method to avoid file I/O
         with patch.object(self.importer, "_save_conversation"):
@@ -272,7 +272,7 @@ class TestChatGPTImporter:
     def test_import_file_general_exception(self):
         """Test import file with general exception."""
         valid_file = self.storage_path / "valid.json"
-        valid_file.write_text(json.dumps(self.valid_export))
+        valid_file.write_text(json.dumps(self.valid_export), encoding="utf-8")
 
         # Mock to raise general exception
         with patch.object(self.importer, "_validate_chatgpt_format") as mock_validate:

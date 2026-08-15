@@ -1428,7 +1428,7 @@ class TestServerExceptionCoverage:
         conv_dir = Path(temp_storage) / "conversations" / "2025" / "06-june"
         conv_dir.mkdir(parents=True, exist_ok=True)
         conv_file = conv_dir / "test-conversation.md"
-        conv_file.write_text("Test content")
+        conv_file.write_text("Test content", encoding="utf-8")
 
         mock_conv_info = {
             "file_path": "2025/06-june/test-conversation.md",
@@ -1443,6 +1443,7 @@ class TestServerExceptionCoverage:
             # Should handle the error gracefully and return default values
             assert isinstance(result, list)
 
+    @requires_posix_permissions
     def test_initialization_with_invalid_permissions(self):
         """Test server initialization with permission issues"""
         # Try to create server in a restricted directory (triggers security validation)

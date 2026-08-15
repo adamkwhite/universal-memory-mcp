@@ -527,7 +527,7 @@ class TestConversationMemoryServerSQLite:
         assert result["status"] == "success"
 
         saved = Path(result["file_path"])
-        data = json.loads(saved.read_text())
+        data = json.loads(saved.read_text(encoding="utf-8"))
         assert data["session_id"] == "sess_abc"
         assert data["user_id"] == "user_x"
         assert data["tags"] == ["starred", "project:memory"]
@@ -541,7 +541,7 @@ class TestConversationMemoryServerSQLite:
             "plain content", "plain title", "2026-04-18T10:00:00"
         )
         saved = Path(result["file_path"])
-        data = json.loads(saved.read_text())
+        data = json.loads(saved.read_text(encoding="utf-8"))
 
         for missing in (
             "session_id",

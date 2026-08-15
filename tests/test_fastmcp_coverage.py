@@ -573,6 +573,10 @@ class TestFastMCPConfigWiring:
         finally:
             shutil.rmtree(other, ignore_errors=True)
 
+    @pytest.mark.skipif(
+        os.name == "nt",
+        reason="TEMP lives under the user profile on Windows, so mkdtemp() is not outside home",
+    )
     def test_trusted_path_outside_home_is_accepted(self, home_temp_storage):
         """An explicitly-configured path outside HOME passes validation."""
         srv = server_fastmcp.FastMCPConversationMemoryServer(storage_path=home_temp_storage)

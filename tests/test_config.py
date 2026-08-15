@@ -14,6 +14,8 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from conftest import requires_posix_home  # noqa: E402
+
 from config import (  # type: ignore[import-not-found]  # noqa: E402
     DEFAULT_CONFIG_FILE,
     DEFAULT_STORAGE_PATH,
@@ -378,7 +380,8 @@ class TestValidation:
                     "storage_path": str(writable_storage),
                     "log_sample_rates": {"search": 10},
                 }
-            )
+            ),
+            encoding="utf-8",
         )
         cfg = Config.load(config_file=config_file, env=empty_env)
         assert cfg.log_sample_rates == {"search": 10}
@@ -518,6 +521,7 @@ class TestHelpers:
         rebuilt = Config(**data)
         assert rebuilt == cfg
 
+    @requires_posix_home
     def test_resolved_storage_path_expands(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:

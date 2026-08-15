@@ -54,7 +54,9 @@ async def test_orphan_file_is_detected(server):
 
     orphan = server.conversations_path / "2026" / "01-january" / "conv_20260115_000000_9999.json"
     orphan.parent.mkdir(parents=True, exist_ok=True)
-    orphan.write_text(json.dumps({"id": "conv_20260115_000000_9999", "title": "Orphan"}))
+    orphan.write_text(
+        json.dumps({"id": "conv_20260115_000000_9999", "title": "Orphan"}), encoding="utf-8"
+    )
 
     report = server.check_consistency()
 
@@ -90,7 +92,9 @@ async def test_equal_counts_with_disjoint_sets_is_not_consistent(server):
 
     orphan = server.conversations_path / "2026" / "01-january" / "conv_20260115_000000_7777.json"
     orphan.parent.mkdir(parents=True, exist_ok=True)
-    orphan.write_text(json.dumps({"id": "conv_20260115_000000_7777", "title": "Orphan"}))
+    orphan.write_text(
+        json.dumps({"id": "conv_20260115_000000_7777", "title": "Orphan"}), encoding="utf-8"
+    )
 
     report = server.check_consistency()
 
@@ -107,17 +111,19 @@ async def test_check_is_read_only(server):
 
     orphan = server.conversations_path / "2026" / "01-january" / "conv_20260115_000000_5555.json"
     orphan.parent.mkdir(parents=True, exist_ok=True)
-    orphan.write_text(json.dumps({"id": "conv_20260115_000000_5555", "title": "Orphan"}))
+    orphan.write_text(
+        json.dumps({"id": "conv_20260115_000000_5555", "title": "Orphan"}), encoding="utf-8"
+    )
 
     before_files = sorted(p.name for p in server.conversations_path.rglob("conv_*.json"))
-    before_index = server.index_file.read_text()
+    before_index = server.index_file.read_text(encoding="utf-8")
     before_rows = server.search_db.get_indexed_file_paths()
 
     server.check_consistency()
     server.check_consistency()
 
     assert sorted(p.name for p in server.conversations_path.rglob("conv_*.json")) == before_files
-    assert server.index_file.read_text() == before_index
+    assert server.index_file.read_text(encoding="utf-8") == before_index
     assert server.search_db.get_indexed_file_paths() == before_rows
 
 
@@ -127,7 +133,9 @@ async def test_samples_are_capped(server):
     for i in range(server.CONSISTENCY_SAMPLE_LIMIT + 3):
         orphan = server.conversations_path / "2026" / "01-january" / f"conv_2026011500000{i}_1.json"
         orphan.parent.mkdir(parents=True, exist_ok=True)
-        orphan.write_text(json.dumps({"id": f"conv_2026011500000{i}_1", "title": f"Orphan {i}"}))
+        orphan.write_text(
+            json.dumps({"id": f"conv_2026011500000{i}_1", "title": f"Orphan {i}"}), encoding="utf-8"
+        )
 
     report = server.check_consistency()
 
@@ -149,7 +157,7 @@ async def test_get_search_stats_carries_the_report(server):
 async def test_unreadable_index_json_does_not_raise(server):
     """A corrupt index.json must degrade to "nothing indexed", not crash."""
     await _add(server, "First")
-    server.index_file.write_text("{not json")
+    server.index_file.write_text("{not json", encoding="utf-8")
 
     report = server.check_consistency()
 
@@ -196,7 +204,9 @@ async def test_index_json_drift_is_reported_separately(server):
     """index.json is its own store and drifts independently of SQLite."""
     await _add(server, "First")
 
-    server.index_file.write_text(json.dumps({"conversations": [], "last_updated": "2026-01-01"}))
+    server.index_file.write_text(
+        json.dumps({"conversations": [], "last_updated": "2026-01-01"}), encoding="utf-8"
+    )
 
     report = server.check_consistency()
 
@@ -235,7 +245,9 @@ class TestSearchStatsRendering:
             server.conversations_path / "2026" / "01-january" / "conv_20260115_000000_4242.json"
         )
         orphan.parent.mkdir(parents=True, exist_ok=True)
-        orphan.write_text(json.dumps({"id": "conv_20260115_000000_4242", "title": "Orphan"}))
+        orphan.write_text(
+            json.dumps({"id": "conv_20260115_000000_4242", "title": "Orphan"}), encoding="utf-8"
+        )
 
         response = await tool()
 

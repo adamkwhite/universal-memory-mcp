@@ -65,7 +65,7 @@ def test_detect_json_format_reports_unknown_on_real_non_json_decode_error(detect
     classified as UNKNOWN/0.0, not propagate."""
     export_file = Path(temp_dir) / "export.json"
     export_file.write_text(
-        json.dumps({"conversations": [{"messages": [{"role": 1}, {"role": 2}]}]})
+        json.dumps({"conversations": [{"messages": [{"role": 1}, {"role": 2}]}]}), encoding="utf-8"
     )
 
     result = detector.detect_format(export_file)
