@@ -146,8 +146,17 @@ jobs:
         run: |
          python -m pytest tests/ --ignore=tests/test_performance_benchmarks.py --cov=src --cov-report=xml --cov-report=term
 
+      # Skipped whenever SONAR_TOKEN isn't available to the run. GitHub
+      # withholds secrets from both dependabot and fork PRs, so the scanner
+      # fails with "Not authorized or project not found" rather than
+      # reporting a quality-gate result. Skipping the STEP (not the job)
+      # keeps `Tests & SonarQube Analysis` green on the tests it can run, so
+      # an outside contributor isn't blocked by a check they cannot fix.
+      # Coverage on their new code is verified when the branch lands on main.
       - name: SonarCloud Scan
-        if: github.actor != 'dependabot[bot]'
+        if: >-
+          github.actor != 'dependabot[bot]'
+          && github.event.pull_request.head.repo.fork != true
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

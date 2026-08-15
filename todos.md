@@ -2,6 +2,27 @@
 
 This file maintains persistent todos across Claude Code sessions.
 
+## Recent Session (August 15, 2026)
+
+**First outside contribution — PR #200 (`locivir`), and the fork-CI gap it exposed**
+
+- [x] CI could not go green on *any* fork PR. GitHub withholds secrets from forks, so
+  `SonarCloud Scan` died with "Not authorized or project not found" and
+  `performance-tests` 403'd posting its results comment — both **after** the work they
+  gate had already passed. Two required checks failing on something a contributor cannot
+  fix. Gated both steps on `github.event.pull_request.head.repo.fork != true`; the Sonar
+  step already had the same carve-out for dependabot, which has the identical no-secrets
+  problem. Skipping the *step* keeps the job green on the tests it can run.
+- [ ] **PR #200 review posted — awaiting contributor.** Two sanitizer fixes requested:
+  phrase-per-chunk so `llama.cpp` stops matching `"llama" OR "cpp"`, and restore the
+  `len(term) >= 2` filter (dropping it made a query of `a` match every document).
+  Cleared on review: no store-integrity regression, `get_conversation`'s identity check
+  holds against all 783 live records, 889 passed / 1 skipped locally.
+- [ ] **Windows portability.** Contributor's native-Windows run: 864 passed, 1 skipped,
+  37 failures, 40 teardown errors — file-handle cleanup, POSIX path/permission
+  assumptions, console encoding, missing benchmark fixtures. Untestable without a
+  Windows runner in CI. See the follow-up note below.
+
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
 
 **Store integrity — one bug class, found four times (PRs #190-#196)**
