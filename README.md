@@ -110,7 +110,10 @@ python3 scripts/bulk_import_enhanced.py your_conversations.json
 ## MCP Tools
 
 ### `search_conversations(query, limit=5)`
-Full-text search across all stored conversations with relevance ranking.
+Full-text search across all stored conversations with relevance ranking. Query text is treated as literal Unicode terms, so punctuation and FTS5 operators do not change the query semantics. Results include conversation IDs for exact retrieval.
+
+### `get_conversation(conversation_id, max_chars=12000)`
+Retrieve a stored conversation by an ID returned from a search tool. Content is read from the authoritative JSON store and truncated to `max_chars` to protect the model context. `max_chars` must be between 1 and 50,000.
 
 ### `search_by_topic(topic, limit=10)`
 Find conversations tagged with a specific topic.
@@ -124,12 +127,14 @@ Generate insights and patterns from recent conversations.
 ### `get_search_stats()`
 View search engine statistics — index size, topic counts, and engine status.
 
-### `update_conversation(conversation_id, content=None, title=None, add_tags=None, remove_tags=None, set_tags=None, conversation_type=None, session_id=None, user_id=None, change_note=None)`
-Update fields on an existing conversation in place. Pass `conversation_id` plus any subset of fields to change; unspecified fields are left alone. The first line of the stored content is rewritten with a self-documenting audit line — `[update <iso-timestamp> — <change_note>]` — chained across repeated updates. If `change_note` is omitted, it's auto-derived from which fields changed.
+### `update_conversation(conversation_id, content=None, title=None, add_tags=None, remove_tags=None, set_tags=None, conversation_type=None, session_id=None, user_id=None, change_note=None, record_audit=True)`
+Update fields on an existing conversation in place. Pass `conversation_id` plus any subset of fields to change; unspecified fields are left alone. By default, the first line of stored content is rewritten with a self-documenting audit line — `[update <iso-timestamp> — <change_note>]` — chained across repeated updates. If `change_note` is omitted, it is derived from the changed fields.
+
+Set `record_audit=False` only for authoritative imports whose content must remain an exact replica of the source system. Normal interactive updates should retain the default audit record.
 
 Tag operations: `set_tags` replaces the full tag list and is mutually exclusive with `add_tags`/`remove_tags` (pass `set_tags=[]` to clear all tags); `add_tags`/`remove_tags` mutate the existing list.
 
-Returns a status string. On success: `Status: success` plus a summary message and the audit line. On failure (malformed ID, conversation not found, no changes provided, conflicting tag ops, or an I/O error): `Status: error` plus a message describing the problem.
+Returns a status string. On success: `Status: success` plus a summary message and, when enabled, the audit line. On failure (malformed ID, conversation not found, no changes provided, conflicting tag ops, or an I/O error): `Status: error` plus a message describing the problem.
 
 ### `search_by_tag(tag, limit=10)`
 Find conversations tagged with a specific tag — a universal metadata field populated by importers or set via `update_conversation` (e.g. `starred`, `archived`, `workspace:my-project`). Exact match, case-sensitive. Requires SQLite FTS to be enabled; without it, returns an error message.

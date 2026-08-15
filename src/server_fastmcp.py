@@ -40,6 +40,8 @@ CONTEXT_LINES_BEFORE = 2
 CONTEXT_LINES_AFTER = 3
 DEFAULT_SEARCH_LIMIT = 5
 MAX_RESULTS_DISPLAY = 10
+DEFAULT_CONVERSATION_CHARS = 12000
+MAX_CONVERSATION_CHARS = 50000
 UTC_OFFSET_REPLACEMENT = "+00:00"
 
 COMMON_TECH_TERMS = [
@@ -182,17 +184,22 @@ async def search_conversations(query: str, limit: int = DEFAULT_SEARCH_LIMIT) ->
     set_correlation_id()
     results = await memory_server.search_conversations(query, limit)
 
+    errors = [result["error"] for result in results if "error" in result]
+    if errors:
+        return f"Search failed for '{query}': {errors[0]}"
+
     if not results:
         return f"No conversations found matching '{query}'"
 
     response = f"Found {len(results)} conversations matching '{query}':\n\n"
     for i, result in enumerate(results, 1):
-        if "error" in result:
-            response += f"Error: {result['error']}\n"
-            continue
-
         response += f"**{i}. {result['title']}**\n"
+        response += f"ID: {result['id']}\n"
         response += f"Date: {result['date']}\n"
+        if result.get("session_id"):
+            response += f"Session: {result['session_id']}\n"
+        if result.get("conversation_type"):
+            response += f"Type: {result['conversation_type']}\n"
         response += f"Topics: {', '.join(result['topics'])}\n"
         response += f"Relevance Score: {result['score']}\n"
         response += f"Preview:\n```\n{result['preview']}\n```\n\n"
@@ -253,6 +260,7 @@ async def update_conversation(
     session_id: str | None = None,
     user_id: str | None = None,
     change_note: str | None = None,
+    record_audit: bool = True,
 ) -> str:
     """Update fields on an existing conversation in place.
 
@@ -268,6 +276,9 @@ async def update_conversation(
     Metadata fields (tags, conversation_type, session_id, user_id) are
     validated/sanitized before storage since this data may originate from
     external imports.
+
+    ``record_audit=False`` preserves authoritative imported content verbatim.
+    Normal interactive updates should retain the default audit record.
     """
     try:
         add_tags = validate_tags(add_tags)
@@ -290,10 +301,54 @@ async def update_conversation(
         session_id=session_id,
         user_id=user_id,
         change_note=change_note,
+        record_audit=record_audit,
     )
     response = f"Status: {result['status']}\n{result['message']}"
     if result.get("audit_line"):
         response += f"\nAudit: {result['audit_line']}"
+    return response
+
+
+@mcp.tool()
+async def get_conversation(
+    conversation_id: str,
+    max_chars: int = DEFAULT_CONVERSATION_CHARS,
+) -> str:
+    """Retrieve a stored conversation by an ID returned from a search tool.
+
+    The complete record is read from the authoritative JSON store. Content is
+    capped to protect the model context; increase ``max_chars`` when necessary.
+    """
+    set_correlation_id()
+    if not 1 <= max_chars <= MAX_CONVERSATION_CHARS:
+        return f"Status: error\nmax_chars must be between 1 and {MAX_CONVERSATION_CHARS}"
+
+    result = await memory_server.get_conversation(conversation_id)
+    if "error" in result:
+        return f"Status: error\n{result['error']}"
+
+    content = result.get("content", "")
+    if not isinstance(content, str):
+        return "Status: error\nConversation content is not text"
+
+    excerpt = content[:max_chars]
+    response = f"**{result.get('title', 'Untitled')}**\n"
+    response += f"ID: {result.get('id', conversation_id)}\n"
+    if result.get("date"):
+        response += f"Date: {result['date']}\n"
+    if result.get("session_id"):
+        response += f"Session: {result['session_id']}\n"
+    if result.get("conversation_type"):
+        response += f"Type: {result['conversation_type']}\n"
+    response += f"Content: {len(excerpt)} of {len(content)} characters\n\n"
+    response += excerpt
+    if len(content) > max_chars:
+        if max_chars < MAX_CONVERSATION_CHARS:
+            response += (
+                "\n\n[Content truncated; request a larger max_chars value to retrieve more.]"
+            )
+        else:
+            response += "\n\n[Content truncated at the server maximum.]"
     return response
 
 
