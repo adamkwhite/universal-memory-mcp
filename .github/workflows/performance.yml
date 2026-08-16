@@ -3,7 +3,7 @@ name: Performance Benchmarks
 on:
   push:
     branches: [ main ]
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore', '.github/**']
+    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore']
   pull_request:
     branches: [ main ]
     # NO paths-ignore here on purpose — see build.yml's pull_request comment.
@@ -40,7 +40,6 @@ jobs:
               - '!docs/**'
               - '!LICENSE'
               - '!.gitignore'
-              - '!.github/**'
       - name: Resolve flags
         id: set
         # Non-PR events (push, schedule, workflow_dispatch) have no base to
