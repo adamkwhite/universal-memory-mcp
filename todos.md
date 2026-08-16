@@ -135,16 +135,26 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
+- [ ] **Restart the stale MCP server processes.** Four are running on this machine, all started
+  *before* today's merges (one 3.8 days old), so they still execute the pre-#204 connection code
+  and the pre-#209 `os.getenv("HOME")` fallback. Harmless — measured 7–9 fds each, no
+  accumulation — but they hold old code until whatever owns each connection restarts. This is the
+  **second** consecutive session carrying this note (the 2026-08-11 wrap-up had the same one), so
+  it accumulates and nothing sweeps it. Consider adding a "restart MCP servers" step to the
+  wrap-up routine rather than re-discovering it each time.
+- [ ] **Follow up with job-agent on the SQLite connection pattern.** Sent a grounded heads-up to
+  that session at the end of this one: it has **21** bare `with sqlite3.connect(...)` sites and
+  **41** once the `sqlite_helpers.connect` / `connect_readonly` wrappers are included (those
+  `return conn` with no closing context manager). Nothing to do in *this* repo — tracked here so
+  the thread isn't lost. Note for them: job-agent runs WAL with multi-writer contention, and an
+  open connection holds a read snapshot that blocks WAL checkpointing, so the symptom there would
+  be `-wal` files that never truncate, not the Windows file-delete failure we hit. Unverified —
+  I read their source, not their WAL sizes.
 - [ ] **Publishing metadata.** `pyproject.toml` has no `license`, `authors`, `classifiers`,
   `keywords` or `[project.urls]`, and the existing `LICENSE` file is not declared. This is the
   last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already
   belongs to someone else (`maydali28/memcp` v0.3.0, same niche), and `universal-memory-mcp` is
   currently unclaimed.
-- [x] **SonarCloud PR decoration survived the repo rename — confirmed.** #199 was the first
-  code PR after #197 and decorated normally
-  (`sonarcloud.io/dashboard?id=adamkwhite_claude-memory-mcp&pullRequest=199`); every PR since has
-  too. The deliberately-unchanged project key was the right call. Gate currently OK: new-code
-  coverage 97.7%, duplication 0.1%, A on all three new-code ratings.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time

@@ -394,7 +394,8 @@ pip install mcp[cli]  # Include CLI extras
 - **Python**: 3.10+ (CI runs 3.14)
 - **Disk Space**: ~10MB per 100 conversations
 - **Memory**: <100MB RAM usage
-- **OS**: Ubuntu/WSL recommended, macOS/Windows compatible
+- **OS**: Linux/WSL and Windows are both verified in CI on every PR (Ubuntu + `windows-latest`).
+  macOS is expected to work but is not covered by a CI runner.
 
 ## Contributing
 
@@ -403,6 +404,12 @@ pip install mcp[cli]  # Include CLI extras
 3. Commit changes: `git commit -am 'Add feature'`
 4. Push to branch: `git push origin feature-name`
 5. Submit a Pull Request
+
+**A note for fork PRs:** GitHub does not give forks access to repository secrets, so the
+SonarCloud scan and the performance-results comment are **skipped** on your PR rather than run.
+That is expected and is not something you can or should fix — the test suite, linting, CodeQL and
+the Windows run all still execute normally, and coverage on your changes is checked when the
+branch lands on `main`. If you see those two skipped, nothing is wrong.
 
 ## License
 
