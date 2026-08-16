@@ -142,14 +142,11 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   **second** consecutive session carrying this note (the 2026-08-11 wrap-up had the same one), so
   it accumulates and nothing sweeps it. Consider adding a "restart MCP servers" step to the
   wrap-up routine rather than re-discovering it each time.
-- [ ] **Follow up with job-agent on the SQLite connection pattern.** Sent a grounded heads-up to
-  that session at the end of this one: it has **21** bare `with sqlite3.connect(...)` sites and
-  **41** once the `sqlite_helpers.connect` / `connect_readonly` wrappers are included (those
-  `return conn` with no closing context manager). Nothing to do in *this* repo — tracked here so
-  the thread isn't lost. Note for them: job-agent runs WAL with multi-writer contention, and an
-  open connection holds a read snapshot that blocks WAL checkpointing, so the symptom there would
-  be `-wal` files that never truncate, not the Windows file-delete failure we hit. Unverified —
-  I read their source, not their WAL sizes.
+- [x] **job-agent SQLite follow-up — closed, no action.** job-agent had already shipped its own
+  `sqlite-connect-not-closed` ast-grep rule (#2969, #2972) before the heads-up landed, and more
+  completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
+  rather than whole-tree — the right call there, since that repo carries a real backlog of
+  existing sites where this one was at zero. Nothing outstanding in either repo.
 - [ ] **Publishing metadata.** `pyproject.toml` has no `license`, `authors`, `classifiers`,
   `keywords` or `[project.urls]`, and the existing `LICENSE` file is not declared. This is the
   last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already

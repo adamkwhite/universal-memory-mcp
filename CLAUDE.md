@@ -61,6 +61,33 @@ singleton at import time, before any fixture runs. Before #191 every suite run w
 conversations into `~/claude-memory` (611 junk rows out of 1381). `tests/test_storage_isolation.py`
 guards this; if it fails, stop and fix it rather than working around it.
 
+### The store is append-only — deliberately, not by omission
+
+There is **no delete anywhere**: not an MCP tool, not a `ConversationMemoryServer` method, not a
+`SearchDatabase` method. `add_conversation` and `update_conversation` exist; removal does not.
+That is the design, not a gap in the importer/exporter mirror pattern — **do not propose adding
+`delete_conversation` as a missing feature.**
+
+An append-only log is the point: a memory you can quietly edit pieces out of is worth less than
+one you cannot. Correction is what `update_conversation` is for, and note that it *prepends* a
+chained audit line (`[update <iso> — <note>]`) rather than overwriting silently — same intent.
+
+If a specific entry genuinely must be removed, treat it as an explicit one-off, not a new
+capability. It touches **six** stores, and missing any one recreates the #190/#193/#194 drift
+class:
+
+1. the conversation JSON file — delete **last**, everything else keys off it
+2. `index.json`
+3. `topics.json` — reuse `_resync_topics_index(old_topics, [], conv_id)`, never hand-edit
+4. SQLite `conversations` — the AFTER DELETE trigger cascades to `conversations_fts`
+5. SQLite `conversation_topics`
+6. SQLite `conversation_tags`
+
+Then verify **by identity, not by count**: `check_consistency()` all-zero, zero residual rows for
+that id across all three tables, `conversations_fts_docsize` == `conversations` (the #190
+invariant), and run a real content search afterwards. An orphaned FTS entry breaks *all* content
+search while `PRAGMA integrity_check` still returns `ok`.
+
 ### Windows is now a supported, tested platform (#202–#206, August 2026)
 
 `build.yml` runs the suite on `windows-latest` and it is a **required check**. Before assuming a
