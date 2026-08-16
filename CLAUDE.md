@@ -69,8 +69,15 @@ That is the design, not a gap in the importer/exporter mirror pattern — **do n
 `delete_conversation` as a missing feature.**
 
 An append-only log is the point: a memory you can quietly edit pieces out of is worth less than
-one you cannot. Correction is what `update_conversation` is for, and note that it *prepends* a
+one you cannot. Correction is what `update_conversation` is for, and by default it *prepends* a
 chained audit line (`[update <iso> — <note>]`) rather than overwriting silently — same intent.
+
+**One deliberate escape hatch, added by #200:** `update_conversation(..., record_audit=False)`
+skips the audit line entirely. It exists for authoritative re-imports, where stored content must
+stay an exact replica of a source system and a synthetic prefix would make the record diverge on
+every sync. That is a narrow, legitimate exception — it must not become the general update path,
+because a silent overwrite is exactly what the audit line exists to prevent. Interactive edits
+keep the default.
 
 If a specific entry genuinely must be removed, treat it as an explicit one-off, not a new
 capability. It touches **six** stores, and missing any one recreates the #190/#193/#194 drift

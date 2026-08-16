@@ -13,11 +13,14 @@ This file maintains persistent todos across Claude Code sessions.
   fix. Gated both steps on `github.event.pull_request.head.repo.fork != true`; the Sonar
   step already had the same carve-out for dependabot, which has the identical no-secrets
   problem. Skipping the *step* keeps the job green on the tests it can run.
-- [ ] **PR #200 review posted — awaiting contributor.** Two sanitizer fixes requested:
-  phrase-per-chunk so `llama.cpp` stops matching `"llama" OR "cpp"`, and restore the
-  `len(term) >= 2` filter (dropping it made a query of `a` match every document).
-  Cleared on review: no store-integrity regression, `get_conversation`'s identity check
-  holds against all 783 live records, 889 passed / 1 skipped locally.
+- [x] **PR #200 MERGED** (`108c85e`, 2026-08-16) — the repo's first outside contribution, from
+  Ernst Plaatsman (`locivir`). Both requested sanitizer fixes landed: phrase-per-chunk so
+  `llama.cpp` no longer matches `"llama" OR "cpp"`, and the `len(term) >= 2` filter restored.
+  His decoy-record test is better than the fix suggested in review — it asserts `llama.cpp`
+  returns *only* the matching conversation, which is what actually fails on a revert.
+  Ships `get_conversation`, IDs/session/type in search results, `record_audit=False` for
+  authoritative re-imports, and backend search errors reported as failures rather than
+  formatted as successful results. Green on current main: 894 Linux / 885 Windows.
 - [x] **Windows portability — DONE (#202, #204, #205, #206, #209).** Windows is a required
   check and the suite is green there: **880 passed, 10 skipped**. Contributor's original
   native-Windows run: 864 passed, 1 skipped,
@@ -135,13 +138,13 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
-- [ ] **Restart the stale MCP server processes.** Four are running on this machine, all started
-  *before* today's merges (one 3.8 days old), so they still execute the pre-#204 connection code
-  and the pre-#209 `os.getenv("HOME")` fallback. Harmless — measured 7–9 fds each, no
-  accumulation — but they hold old code until whatever owns each connection restarts. This is the
-  **second** consecutive session carrying this note (the 2026-08-11 wrap-up had the same one), so
-  it accumulates and nothing sweeps it. Consider adding a "restart MCP servers" step to the
-  wrap-up routine rather than re-discovering it each time.
+- [ ] **Restart the stale MCP server processes — now a feature gap, not just a bugfix gap.**
+  Running servers predate this weekend's merges, so they hold the pre-#204 connection code and
+  the pre-#209 `HOME` fallback. As of #200 they are also missing **`get_conversation`** and the
+  conversation IDs in search results — so the new retrieval tool is unreachable from any live
+  session until each connection restarts. Harmless otherwise (measured 7–9 fds each, no
+  accumulation). **Third** consecutive session carrying this note; nothing sweeps it, so it is
+  worth making "restart MCP servers" a standing step in the wrap-up routine.
 - [x] **job-agent SQLite follow-up — closed, no action.** job-agent had already shipped its own
   `sqlite-connect-not-closed` ast-grep rule (#2969, #2972) before the heads-up landed, and more
   completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
