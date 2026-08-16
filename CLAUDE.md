@@ -10,7 +10,7 @@
 **Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
 portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
 (#190–#196) and the rename to `universal-memory-mcp` (#197).
-**Test Coverage**: 900 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 875 passed / 14 skipped on `windows-latest` in CI (the 14 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 10 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
@@ -82,15 +82,23 @@ Windows failure is environmental, read this — the first run found a real bug i
   pops only this project's variables and derives the list from `Config.ENV_MAPPING`.
 - **Two markers exist for genuinely platform-specific behaviour**, both in `tests/conftest.py`:
   `requires_posix_permissions` (Windows `chmod` only toggles the read-only attribute, never for
-  directories) and `requires_posix_home` (Windows resolves `~` from `USERPROFILE` and never sets
-  `HOME`). 14 tests are skipped on Windows under these. Reach for them only when the behaviour
-  under test has no Windows equivalent — not to silence a portable bug.
+  directories). Reach for it only when the behaviour under test has no Windows equivalent — not
+  to silence a portable bug. A second marker, `requires_posix_home`, was deleted in #209: it
+  existed because `init_default_logging` built its fallback path from `os.getenv("HOME")`, which
+  is a **src** portability bug, not a test constraint. Fixing src let four tests run on both
+  platforms instead of being skipped on one. When a marker starts covering for src, delete the
+  marker.
+- **To point `~` somewhere in a test, set `HOME_ENV_VAR` from `tests/conftest.py`**, not a literal
+  `"HOME"` — Windows resolves `~` from `USERPROFILE` (then `HOMEDRIVE` + `HOMEPATH`) and never
+  reads `HOME`, so a hard-coded `HOME` asserts nothing there.
 - **Don't assert on `"a/b" in str(path)`** — compare `Path.parts`. And compare `Path.resolve()` on
   both sides of a path equality: Windows `tmp_path` arrives as the 8.3 short name (`RUNNER~1`)
   while code under test records the long form (`runneradmin`).
-- **Known gap, deliberately unfixed:** `logging_config.init_default_logging` falls back to
-  `os.getenv("HOME")`, which Windows never sets, so that branch is dead there and no log file gets
-  configured. Guarded by `if home:` so nothing crashes. `Path.home()` would be the portable form.
+- **Resolve the home directory with `Path.home()`, never `os.getenv("HOME")`.** POSIX falls back
+  to the pwd database when `HOME` is unset; Windows never sets `HOME` at all. Fixed in #209 —
+  `init_default_logging`'s fallback was dead code on Windows, silently leaving an install with no
+  log file. `Path.home()` raises `RuntimeError` when it cannot resolve, so suppress that where
+  "no path" is an acceptable outcome.
 
 ### Recent Major Implementations
 - ✅ **Centralized Configuration** (PRs #111, #116): `src/config.py` `Config` dataclass with env/file/profile precedence and validation, wired into `server_fastmcp.py`/`logging_config.py`/`path_utils.py`. Replaces scattered `os.getenv()` reads.
@@ -117,7 +125,7 @@ Windows failure is environmental, read this — the first run found a real bug i
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 901 tests (900 passed, 1 skipped, verified `pytest -q` August 15 2026)
+- **pytest**: Comprehensive testing framework with 902 tests (901 passed, 1 skipped, verified `pytest -q` August 15 2026)
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -265,7 +273,7 @@ wired into the ruleset and do not block merge. Re-check with:
 `gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219 --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context'`
 
 - `Tests & SonarQube Analysis` fails the PR if the SonarCloud quality gate is red. The gate ("Sonar way", verified via the SonarCloud API) requires coverage on new code ≥ **80%**, not 90% as this doc previously (incorrectly) claimed — also new duplicated lines ≤ 3% and A ratings on new security/reliability/maintainability
-- `Tests (Windows)` became required in #206, after #204/#205 took the Windows suite from 29 failures + 40 teardown errors to green (875 passed, 14 skipped). The 14 skips are deliberate and marked in `tests/conftest.py` — `requires_posix_permissions` (Windows `chmod` only toggles the read-only attribute, never for directories) and `requires_posix_home` (Windows resolves `~` from `USERPROFILE` and never sets `HOME`).
+- `Tests (Windows)` became required in #206, after #204/#205 took the Windows suite from 29 failures + 40 teardown errors to green. The remaining Windows skips are deliberate and marked in `tests/conftest.py` with `requires_posix_permissions` (Windows `chmod` only toggles the read-only attribute, never for directories). #209 removed the second marker by fixing the src bug it was covering for.
 - Draft PRs skip all 4 checks until flipped ready (`gh pr ready`); a skipped required check reports as passing, so a draft never blocks merge, it just hasn't been checked yet
 - The `changes` path filter means a PR touching only **docs** (`*.md`, `docs/**`, `LICENSE`, `.gitignore`) **skips every heavy job**, so all its required checks report as passing without having run. That is by design: a skipped *workflow* would never report at all and would hang forever at "Expected", so the workflow always starts and the `changes` job gates the heavy jobs instead.
 - `.github/**` used to be in that exclusion list too, which meant a workflow change skipped the jobs it was changing — on the PR *and* on the merge to main. #206 made `Tests (Windows)` a required check and produced no CI run on any branch. Fixed in #208: `.github/**` now counts as code, so CI verifies its own changes.
@@ -341,7 +349,7 @@ source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src 
 ```
 
 **Expected Results:**
-- ✅ All tests must pass (900 passed, 1 skipped as of August 15 2026 — the count only grows)
+- ✅ All tests must pass (901 passed, 1 skipped as of August 15 2026 — the count only grows)
 - ✅ Coverage: trust SonarCloud (88%), not a local `.coverage` file. The old "≥ 94%" figure here was a local number that never matched the dashboard.
 - ✅ No failing tests before creating PR
 
@@ -390,7 +398,7 @@ This prevents back-and-forth in PRs due to test failures.
   ```bash
   source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src --cov-report=term -v
   ```
-- [ ] **2. Verify All Tests Pass** (expect 900+ passing tests, 1 skipped — verified August 15 2026)
+- [ ] **2. Verify All Tests Pass** (expect 900+ passing tests, 1 skipped — verified August 15 2026; 880/10 on windows-latest)
 - [ ] **3. Check Coverage Baseline** (expect ≥88% coverage per SonarCloud, not local `.coverage`)
 - [ ] **4. Test Supporting Scripts** (if modified any scripts/ files)
 - [ ] **5. Validate Async Compatibility** (if modified async methods)
