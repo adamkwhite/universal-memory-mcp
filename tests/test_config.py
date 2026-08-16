@@ -14,7 +14,7 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from conftest import requires_posix_home  # noqa: E402
+from conftest import HOME_ENV_VAR  # noqa: E402
 
 from config import (  # type: ignore[import-not-found]  # noqa: E402
     DEFAULT_CONFIG_FILE,
@@ -521,11 +521,12 @@ class TestHelpers:
         rebuilt = Config(**data)
         assert rebuilt == cfg
 
-    @requires_posix_home
     def test_resolved_storage_path_expands(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        monkeypatch.setenv("HOME", str(tmp_path))
+        # HOME_ENV_VAR, not a literal "HOME": Windows resolves ~ from
+        # USERPROFILE and never reads HOME, so this asserted nothing there.
+        monkeypatch.setenv(HOME_ENV_VAR, str(tmp_path))
         cfg = Config(storage_path="~/abc")
         assert cfg.resolved_storage_path() == (tmp_path / "abc").resolve()
 

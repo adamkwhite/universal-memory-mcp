@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from conftest import requires_posix_home, without_app_env
+from conftest import HOME_ENV_VAR, without_app_env
 
 from logging_config import (
     ColoredFormatter,
@@ -264,64 +264,72 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == "/tmp/test.log"
         assert kwargs["console_output"] is False
 
-    @requires_posix_home
-    @patch.dict(os.environ, {"HOME": "/home/user"}, clear=True)
     @patch("logging_config.setup_logging")
-    def test_init_default_logging_home_fallback(self, mock_setup):
-        """Test default logging falls back to home directory for log file"""
-        init_default_logging()
+    def test_init_default_logging_home_fallback(self, mock_setup, monkeypatch, tmp_path):
+        """Default log file lands under the resolved home directory.
 
-        expected_log_file = "/home/user/.claude-memory/logs/claude-mcp.log"
+        Sets HOME_ENV_VAR rather than HOME: Windows resolves ``~`` from
+        USERPROFILE and never reads HOME, so hard-coding HOME asserts nothing
+        there. Compares path components rather than a "/"-joined string for
+        the same reason.
+        """
+        with without_app_env():
+            monkeypatch.setenv(HOME_ENV_VAR, str(tmp_path))
+            init_default_logging()
+
         mock_setup.assert_called_once()
         kwargs = mock_setup.call_args.kwargs
         assert kwargs["log_level"] == "INFO"
-        assert kwargs["log_file"] == expected_log_file
+        assert Path(kwargs["log_file"]) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
         assert kwargs["console_output"] is False
 
-    @requires_posix_home
-    @patch.dict(os.environ, {"CLAUDE_MCP_CONSOLE_OUTPUT": "true", "HOME": "/home/test"})
     @patch("logging_config.setup_logging")
-    def test_init_default_logging_console_enabled(self, mock_setup):
+    def test_init_default_logging_console_enabled(self, mock_setup, monkeypatch, tmp_path):
         """Test default logging with console output explicitly enabled"""
+        monkeypatch.setenv("CLAUDE_MCP_CONSOLE_OUTPUT", "true")
+        monkeypatch.setenv(HOME_ENV_VAR, str(tmp_path))
         init_default_logging()
 
         mock_setup.assert_called_once()
         kwargs = mock_setup.call_args.kwargs
         assert kwargs["log_level"] == "INFO"
-        assert kwargs["log_file"] == "/home/test/.claude-memory/logs/claude-mcp.log"
+        assert Path(kwargs["log_file"]) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
         assert kwargs["console_output"] is True
 
-    @requires_posix_home
-    @without_app_env()
     @patch("logging_config.setup_logging")
     @patch("logging_config.get_default_log_file", None)
-    def test_init_default_logging_home_fallback_no_toctou(self, mock_setup):
-        """The HOME fallback must fetch ``os.getenv("HOME")`` exactly once.
+    def test_init_default_logging_fallback_when_path_utils_missing(
+        self, mock_setup, monkeypatch, tmp_path
+    ):
+        """The hand-built fallback (path_utils unimportable) resolves home too.
 
-        The old code called ``os.getenv("HOME")`` twice (once in the
-        ``elif`` guard, once inside ``os.path.join``). If HOME became falsy
-        between those two calls -- e.g. another thread clearing os.environ --
-        ``os.path.join(None, ...)`` would raise TypeError. Reusing a single
-        fetched value closes that window entirely.
+        This branch used ``os.getenv("HOME")``, which Windows never sets, so
+        it silently produced no log file there. It now uses ``Path.home()``.
         """
-        call_count = {"HOME": 0}
-        real_getenv = os.getenv
-
-        def flaky_getenv(key, default=None):
-            if key == "HOME":
-                call_count["HOME"] += 1
-                # First (and only, post-fix) call sees HOME set; a second
-                # call -- which the pre-fix code made -- would see it gone.
-                return "/home/racer" if call_count["HOME"] == 1 else None
-            return real_getenv(key, default)
-
-        with patch("logging_config.os.getenv", side_effect=flaky_getenv):
-            init_default_logging()  # must not raise TypeError
+        with without_app_env():
+            monkeypatch.setenv(HOME_ENV_VAR, str(tmp_path))
+            init_default_logging()
 
         mock_setup.assert_called_once()
-        kwargs = mock_setup.call_args.kwargs
-        assert kwargs["log_file"] == "/home/racer/.claude-memory/logs/claude-mcp.log"
-        assert call_count["HOME"] == 1
+        log_file = mock_setup.call_args.kwargs["log_file"]
+        assert Path(log_file) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
+
+    @patch("logging_config.setup_logging")
+    @patch("logging_config.get_default_log_file", None)
+    def test_init_default_logging_fallback_survives_unresolvable_home(self, mock_setup):
+        """An unresolvable home leaves log_file unset instead of raising.
+
+        Replaces a test that asserted ``os.getenv("HOME")`` was read exactly
+        once -- the old code read it twice (guard, then os.path.join), so HOME
+        disappearing in between raised TypeError. ``Path.home()`` resolves once
+        by construction, so that window cannot reopen; what still needs
+        asserting is the behaviour when it cannot resolve at all.
+        """
+        with without_app_env(), patch.object(Path, "home", side_effect=RuntimeError):
+            init_default_logging()  # must not raise
+
+        mock_setup.assert_called_once()
+        assert mock_setup.call_args.kwargs["log_file"] is None
 
 
 class TestLoggingIntegration:

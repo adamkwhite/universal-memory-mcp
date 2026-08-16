@@ -60,14 +60,21 @@ This file maintains persistent todos across Claude Code sessions.
     required check.
 
   The 14 Windows skips are deliberate and marked, not silent: POSIX file-mode bits
-  (`requires_posix_permissions`) and the `HOME`-based log-path fallback
-  (`requires_posix_home`), both in `tests/conftest.py` with the reasoning inline.
+  (`requires_posix_permissions`), in `tests/conftest.py` with the reasoning inline. The second
+  marker, `requires_posix_home`, is gone — see below.
 
-**Windows follow-up worth noting (not blocking):** `logging_config.init_default_logging`
-falls back to `os.getenv("HOME")` when `get_default_log_file` is unavailable. Windows
-resolves `~` from `USERPROFILE` and never sets `HOME`, so that fallback is dead code there
-and no log file gets configured. It is a guarded fallback (`if home:`), so nothing crashes —
-but `Path.home()` would be the portable expression of the same intent.
+- [x] **Windows follow-up, now fixed (#209).** `logging_config.init_default_logging` fell back
+  to `os.getenv("HOME")` when `get_default_log_file` was unavailable. Windows resolves `~` from
+  `USERPROFILE` and never sets `HOME`, so that branch was dead code there and the install got no
+  log file. Now uses `Path.home()`, suppressing the `RuntimeError` it raises when home is
+  unresolvable — which is the same "leave it unset" outcome the old `if home:` guard gave, and
+  it closes the old TOCTOU window structurally (the old code read `HOME` twice, so it vanishing
+  in between raised `TypeError` from `os.path.join`).
+
+  The interesting part is the second-order effect: `requires_posix_home` was **covering for a src
+  bug**. Four tests were skipped on Windows to accommodate non-portable production code. Fixing
+  src deleted the marker and let all four run on both platforms. Worth remembering as a smell —
+  a skip marker that exists because *src* is non-portable is a bug report, not a test constraint.
 
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
 
