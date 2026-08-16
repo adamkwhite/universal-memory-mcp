@@ -8,22 +8,21 @@ on:
   push:
     branches:
       - main
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore', '.github/**']
+    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore']
   pull_request:
     branches:
       - main
     # NO paths-ignore here on purpose (mirrors job-agent's ci.yml). A skipped
-    # WORKFLOW never reports a required status check, so a docs/.github-only
-    # PR would sit at "Expected — waiting for status" forever. Instead the
-    # workflow always starts and the `changes` job below decides whether the
-    # heavy jobs run; a skipped JOB still reports (passing) to branch
-    # protection.
+    # WORKFLOW never reports a required status check, so a docs-only PR would
+    # sit at "Expected — waiting for status" forever. Instead the workflow
+    # always starts and the `changes` job below decides whether the heavy jobs
+    # run; a skipped JOB still reports (passing) to branch protection.
     types: [opened, reopened, ready_for_review, synchronize]
 
 jobs:
   # Mirrors job-agent's `changes` job: always runs, computes whether this PR
-  # touches anything beyond docs/config, and gates the heavy jobs below on
-  # that plus draft status. See the pull_request trigger comment above for why.
+  # touches anything beyond docs, and gates the heavy jobs below on that plus
+  # draft status. See the pull_request trigger comment above for why.
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
@@ -35,7 +34,17 @@ jobs:
       code: ${{ steps.set.outputs.code }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      # `code` = "anything that isn't a docs/config-only change".
+      # `code` = "anything that isn't a docs-only change".
+      #
+      # `.github/**` is deliberately NOT excluded here. It was until a PR
+      # changing a workflow skipped every job the workflow defines -- on the
+      # PR (this filter) and again on the merge to main (paths-ignore above),
+      # so a workflow edit was never executed by CI on any branch. #206 made
+      # Tests (Windows) a required check and produced no CI run at all. A
+      # broken workflow would have landed green and detonated on the next
+      # unrelated code PR. In this repo .github/ holds only CI config -- no
+      # templates, no docs -- so treating it as code is the whole point.
+      #
       # predicate-quantifier: every is required for the `!` exclusions to
       # bind (default `some` matches `**` trivially and ignores them).
       - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
@@ -50,7 +59,6 @@ jobs:
               - '!docs/**'
               - '!LICENSE'
               - '!.gitignore'
-              - '!.github/**'
       - name: Resolve flags
         id: set
         # Non-PR events (push, workflow_dispatch) have no base to diff
@@ -66,7 +74,7 @@ jobs:
   quick-checks:
     name: Quick Validation
     needs: [changes]
-    # Skip (-> reports passing) on draft PRs and docs/.github-only PRs; run on
+    # Skip (-> reports passing) on draft PRs and docs-only PRs; run on
     # push/workflow_dispatch and on non-draft PRs that touch code.
     if: >-
       (github.event.pull_request.draft == false || github.event_name != 'pull_request')
