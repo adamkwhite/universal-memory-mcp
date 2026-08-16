@@ -10,7 +10,7 @@
 **Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
 portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
 (#190–#196) and the rename to `universal-memory-mcp` (#197).
-**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 14 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 10 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
@@ -125,7 +125,7 @@ Windows failure is environmental, read this — the first run found a real bug i
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 901 tests (900 passed, 1 skipped, verified `pytest -q` August 15 2026)
+- **pytest**: Comprehensive testing framework with 902 tests (901 passed, 1 skipped, verified `pytest -q` August 15 2026)
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -349,7 +349,7 @@ source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src 
 ```
 
 **Expected Results:**
-- ✅ All tests must pass (900 passed, 1 skipped as of August 15 2026 — the count only grows)
+- ✅ All tests must pass (901 passed, 1 skipped as of August 15 2026 — the count only grows)
 - ✅ Coverage: trust SonarCloud (88%), not a local `.coverage` file. The old "≥ 94%" figure here was a local number that never matched the dashboard.
 - ✅ No failing tests before creating PR
 
@@ -398,7 +398,7 @@ This prevents back-and-forth in PRs due to test failures.
   ```bash
   source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src --cov-report=term -v
   ```
-- [ ] **2. Verify All Tests Pass** (expect 900+ passing tests, 1 skipped — verified August 15 2026)
+- [ ] **2. Verify All Tests Pass** (expect 900+ passing tests, 1 skipped — verified August 15 2026; 880/10 on windows-latest)
 - [ ] **3. Check Coverage Baseline** (expect ≥88% coverage per SonarCloud, not local `.coverage`)
 - [ ] **4. Test Supporting Scripts** (if modified any scripts/ files)
 - [ ] **5. Validate Async Compatibility** (if modified async methods)
