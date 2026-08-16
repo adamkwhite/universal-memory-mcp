@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -26,6 +27,33 @@ class SearchDatabase:
         # Initialize database
         self._init_database()
 
+    @contextmanager
+    def _connect(self):
+        """Open a connection, manage its transaction, and always close it.
+
+        ``with sqlite3.connect(...) as conn`` manages the *transaction* -- it
+        commits on success and rolls back on exception -- and does **not**
+        close the connection. Every call site here used that form, so each
+        operation left a live handle waiting on the garbage collector.
+        Measured before this helper: one leaked handle per operation (1 after
+        __init__, 6 after five adds, 11 after five searches, 0 only after an
+        explicit ``gc.collect()``).
+
+        Invisible on Linux, which lets you unlink a file that is still open.
+        On Windows the open handle makes the database file undeletable, which
+        is what produced ~40 teardown errors when the suite first ran there.
+        A long-lived server also has no guarantee about when GC runs.
+
+        ``with conn`` inside keeps the existing transaction semantics
+        unchanged; the ``finally`` is the only new behaviour.
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     # Metadata columns added by PR adding FTS indexing of D2 universal fields.
     # Column name -> SQL type. All default to NULL (nullable) for backwards
     # compat with conversations imported before the metadata fields existed.
@@ -39,7 +67,7 @@ class SearchDatabase:
     def _init_database(self):
         """Initialize SQLite database with FTS5 tables."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.execute("PRAGMA foreign_keys = ON")
 
                 # Create main conversations table. New installs get the full
@@ -251,7 +279,7 @@ class SearchDatabase:
             custom_fields = conversation_data.get("custom_fields") or {}
             custom_fields_json = json.dumps(custom_fields) if custom_fields else None
 
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 # Upsert rather than INSERT OR REPLACE: REPLACE deletes and
                 # re-inserts the row, which assigns a NEW rowid and (with
                 # recursive_triggers off, the default) skips the AFTER DELETE
@@ -342,7 +370,7 @@ class SearchDatabase:
             if query_cleaned is None:
                 return []
 
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 # Use FTS5 MATCH for full-text search
@@ -385,7 +413,7 @@ class SearchDatabase:
     def search_by_topic(self, topic: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search conversations by specific topic."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 cursor = conn.execute(
@@ -420,7 +448,7 @@ class SearchDatabase:
     def search_by_tag(self, tag: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search conversations by a specific tag (exact match, case-sensitive)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 cursor = conn.execute(
@@ -445,7 +473,7 @@ class SearchDatabase:
     def search_by_session_id(self, session_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search conversations by session_id (exact match)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 cursor = conn.execute(
@@ -471,7 +499,7 @@ class SearchDatabase:
     ) -> list[dict[str, Any]]:
         """Search conversations by conversation_type (exact match)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
 
                 cursor = conn.execute(
@@ -508,7 +536,7 @@ class SearchDatabase:
     def get_conversation_stats(self) -> dict[str, Any]:
         """Get database statistics."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 cursor = conn.execute("SELECT COUNT(*) FROM conversations")
                 total_conversations = cursor.fetchone()[0]
 
@@ -585,7 +613,7 @@ class SearchDatabase:
     def rebuild_fts_index(self):
         """Rebuild the FTS5 index (useful after bulk imports)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 conn.execute("INSERT INTO conversations_fts(conversations_fts) VALUES('rebuild')")
                 conn.commit()
 
@@ -596,7 +624,7 @@ class SearchDatabase:
     def get_conversation_count(self) -> int:
         """Get total conversation count."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 cursor = conn.execute("SELECT COUNT(*) FROM conversations")
                 return cursor.fetchone()[0]
 
@@ -613,7 +641,7 @@ class SearchDatabase:
         Callers that need to compare stores need the identities.
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 return {row[0] for row in conn.execute("SELECT file_path FROM conversations")}
 
         except sqlite3.Error as e:

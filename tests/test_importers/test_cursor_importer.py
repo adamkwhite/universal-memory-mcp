@@ -51,7 +51,7 @@ class TestCursorImporter:
     def test_import_file_invalid_json(self):
         """Test importing invalid JSON file."""
         test_file = self.storage_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -65,7 +65,7 @@ class TestCursorImporter:
         invalid_data = {"not_cursor": "data"}
 
         test_file = self.storage_path / "invalid_cursor.json"
-        test_file.write_text(json.dumps(invalid_data))
+        test_file.write_text(json.dumps(invalid_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -97,7 +97,7 @@ class TestCursorImporter:
         }
 
         test_file = self.storage_path / "cursor_session.json"
-        test_file.write_text(json.dumps(cursor_data))
+        test_file.write_text(json.dumps(cursor_data), encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -112,7 +112,7 @@ class TestCursorImporter:
     def test_import_file_general_exception(self):
         """Test import with general exception."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"session_id": "test"}')
+        test_file.write_text('{"session_id": "test"}', encoding="utf-8")
 
         with patch.object(
             self.importer,
@@ -450,7 +450,7 @@ class TestCursorImporterSaveConversation:
         assert file_path.name.endswith(".json")
 
         # Verify content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
 
         assert saved_data["id"] == conversation["id"]
@@ -502,7 +502,7 @@ class TestCursorImporterIntegration:
         }
 
         test_file = self.storage_path / "complete_session.json"
-        test_file.write_text(json.dumps(cursor_data))
+        test_file.write_text(json.dumps(cursor_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -514,7 +514,10 @@ class TestCursorImporterIntegration:
 
         # Verify metadata
         assert result.metadata["platform"] == "cursor"
-        assert result.metadata["source_file"] == str(test_file)
+        # Resolve both sides: on Windows the fixture path arrives as the 8.3
+        # short name (C:\Users\RUNNER~1) while the importer records the long
+        # form (C:\Users\runneradmin). Same file, different spelling.
+        assert Path(result.metadata["source_file"]).resolve() == Path(test_file).resolve()
         assert result.metadata["import_format"] == "cursor_session"
 
         # Verify conversation file was created (exclude source file)
@@ -524,7 +527,7 @@ class TestCursorImporterIntegration:
         assert len(conversation_files) == 1
 
         # Verify conversation content
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             saved_conversation = json.load(f)
 
         assert saved_conversation["platform"] == "cursor"
@@ -562,7 +565,7 @@ class TestCursorImporterIntegration:
         }
 
         test_file = self.storage_path / "complex_session.json"
-        test_file.write_text(json.dumps(complex_data))
+        test_file.write_text(json.dumps(complex_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -573,7 +576,7 @@ class TestCursorImporterIntegration:
         conversation_files = [
             f for f in self.storage_path.rglob("*.json") if f.name != "complex_session.json"
         ]
-        with open(conversation_files[0]) as f:
+        with open(conversation_files[0], encoding="utf-8") as f:
             conversation = json.load(f)
 
         assert "messages" in conversation

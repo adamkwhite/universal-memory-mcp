@@ -17,6 +17,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -52,7 +53,7 @@ def db(temp_dir):
 
 
 def _drop(db, table):
-    with sqlite3.connect(db.db_path) as conn:
+    with closing(sqlite3.connect(db.db_path)) as conn, conn:
         conn.execute(f"DROP TABLE {table}")
         conn.commit()
 

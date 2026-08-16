@@ -17,6 +17,7 @@ the AFTER DELETE trigger entirely. One orphan leaked per re-saved conversation.
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -47,7 +48,7 @@ def db():
 
 def _counts(db: SearchDatabase) -> tuple[int, int]:
     """Return (row count, indexed-document count)."""
-    with sqlite3.connect(db.db_path) as conn:
+    with closing(sqlite3.connect(db.db_path)) as conn, conn:
         rows = conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0]
         docs = conn.execute("SELECT COUNT(*) FROM conversations_fts_docsize").fetchone()[0]
     return rows, docs
@@ -74,11 +75,11 @@ def test_search_survives_a_resave(db):
 def test_resave_preserves_rowid(db):
     """Rowid stability is what keeps the external-content read-back valid."""
     db.add_conversation(_conversation("a", "First", "hello world"), "/tmp/a.json")
-    with sqlite3.connect(db.db_path) as conn:
+    with closing(sqlite3.connect(db.db_path)) as conn, conn:
         before = conn.execute("SELECT rowid FROM conversations WHERE id='a'").fetchone()[0]
 
     db.add_conversation(_conversation("a", "Second", "goodbye moon"), "/tmp/a.json")
-    with sqlite3.connect(db.db_path) as conn:
+    with closing(sqlite3.connect(db.db_path)) as conn, conn:
         after = conn.execute("SELECT rowid FROM conversations WHERE id='a'").fetchone()[0]
 
     assert before == after
@@ -89,7 +90,7 @@ def test_delete_removes_the_index_entry(db):
     db.add_conversation(_conversation("a", "First", "hello world"), "/tmp/a.json")
     db.add_conversation(_conversation("b", "Other", "unrelated text"), "/tmp/b.json")
 
-    with sqlite3.connect(db.db_path) as conn:
+    with closing(sqlite3.connect(db.db_path)) as conn, conn:
         conn.execute("DELETE FROM conversations WHERE id='a'")
         conn.commit()
 
@@ -106,7 +107,7 @@ def test_init_repairs_a_desynced_index(tmp_path):
 
     # Forge the exact damage the old triggers caused: an index entry whose
     # rowid no longer exists in the content table.
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn, conn:
         conn.execute(
             "INSERT INTO conversations_fts(rowid, id, title, content, topics_text) "
             "VALUES (999, 'ghost', 'Ghost', 'phantom text', '')"
@@ -118,7 +119,8 @@ def test_init_repairs_a_desynced_index(tmp_path):
     # table"). Accept either — the assertion is that the forged desync is
     # detectable as an error, not which wording this SQLite happens to use.
     with (
-        sqlite3.connect(db_path) as conn,
+        closing(sqlite3.connect(db_path)) as conn,
+        conn,
         pytest.raises(sqlite3.DatabaseError, match="malformed|missing row"),
     ):
         conn.execute(

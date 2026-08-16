@@ -51,7 +51,7 @@ class TestClaudeImporter:
     def test_import_file_general_exception(self):
         """Test import with general exception."""
         test_file = self.storage_path / "test.json"
-        test_file.write_text('{"test": "data"}')
+        test_file.write_text('{"test": "data"}', encoding="utf-8")
 
         with patch.object(
             self.importer, "_import_json_format", side_effect=Exception("Test error")
@@ -98,7 +98,7 @@ class TestClaudeImporterJSONFormat:
         }
 
         test_file = self.storage_path / "claude_memory.json"
-        test_file.write_text(json.dumps(memory_data))
+        test_file.write_text(json.dumps(memory_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -112,7 +112,7 @@ class TestClaudeImporterJSONFormat:
     def test_import_json_invalid_format(self):
         """Test importing invalid JSON."""
         test_file = self.storage_path / "invalid.json"
-        test_file.write_text('{"invalid": json syntax}')
+        test_file.write_text('{"invalid": json syntax}', encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -126,7 +126,7 @@ class TestClaudeImporterJSONFormat:
         unsupported_data = {"not_claude": "data", "random": "fields"}
 
         test_file = self.storage_path / "unsupported.json"
-        test_file.write_text(json.dumps(unsupported_data))
+        test_file.write_text(json.dumps(unsupported_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -156,7 +156,7 @@ class TestClaudeImporterTextFormat:
 """
 
         test_file = self.storage_path / "claude_web.md"
-        test_file.write_text(markdown_content)
+        test_file.write_text(markdown_content, encoding="utf-8")
 
         with patch.object(self.importer, "_save_conversation") as mock_save:
             result = self.importer.import_file(test_file)
@@ -169,7 +169,7 @@ class TestClaudeImporterTextFormat:
     def test_import_text_exception(self):
         """Test text import with exception."""
         test_file = self.storage_path / "test.txt"
-        test_file.write_text("Test content")
+        test_file.write_text("Test content", encoding="utf-8")
 
         with patch.object(
             self.importer, "_import_text_format", side_effect=Exception("Parse error")
@@ -260,7 +260,7 @@ class TestClaudeImporterSaveConversation:
         assert file_path.name.endswith(".json")
 
         # Verify content
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             saved_data = json.load(f)
 
         assert saved_data["id"] == conversation["id"]
@@ -301,7 +301,7 @@ class TestClaudeImporterIntegration:
         }
 
         test_file = self.storage_path / "claude_e2e_test.json"
-        test_file.write_text(json.dumps(claude_data))
+        test_file.write_text(json.dumps(claude_data), encoding="utf-8")
 
         result = self.importer.import_file(test_file)
 
@@ -313,7 +313,10 @@ class TestClaudeImporterIntegration:
 
         # Verify metadata
         assert result.metadata["platform"] == "claude"
-        assert result.metadata["source_file"] == str(test_file)
+        # Resolve both sides: on Windows the fixture path arrives as the 8.3
+        # short name (C:\Users\RUNNER~1) while the importer records the long
+        # form (C:\Users\runneradmin). Same file, different spelling.
+        assert Path(result.metadata["source_file"]).resolve() == Path(test_file).resolve()
 
         # Verify Claude Memory format was recognized (no new file created,
         # existing format validated)
@@ -324,7 +327,7 @@ class TestClaudeImporterIntegration:
         # (no separate conversation file is created)
         assert test_file.exists()
 
-        with open(test_file) as f:
+        with open(test_file, encoding="utf-8") as f:
             original_data = json.load(f)
 
         assert original_data["platform"] == "claude"

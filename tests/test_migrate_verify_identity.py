@@ -44,7 +44,9 @@ def _stray_file(server, suffix):
     """A conversation file on disk that no index row references."""
     path = server.conversations_path / "2026" / "01-january" / f"conv_2026011500000{suffix}_1.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"id": f"conv_2026011500000{suffix}_1", "title": "Stray"}))
+    path.write_text(
+        json.dumps({"id": f"conv_2026011500000{suffix}_1", "title": "Stray"}), encoding="utf-8"
+    )
     return path
 
 

@@ -3,7 +3,7 @@ name: Performance Benchmarks
 on:
   push:
     branches: [ main ]
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore', '.github/**']
+    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore']
   pull_request:
     branches: [ main ]
     # NO paths-ignore here on purpose — see build.yml's pull_request comment.
@@ -40,7 +40,6 @@ jobs:
               - '!docs/**'
               - '!LICENSE'
               - '!.gitignore'
-              - '!.github/**'
       - name: Resolve flags
         id: set
         # Non-PR events (push, schedule, workflow_dispatch) have no base to
@@ -141,8 +140,15 @@ jobs:
           echo "✅ Performance check passed: ${SEARCH_TIME}s < 5s"
         fi
 
+    # Fork PRs get a read-only GITHUB_TOKEN, so createComment returns 403 and
+    # fails the job *after* the benchmark itself has already passed. The
+    # regression gate above is the real check; this comment is a convenience,
+    # so skip it rather than fail a contributor's PR on it. Results are still
+    # in the uploaded performance-report artifact.
     - name: Comment performance results on PR
-      if: github.event_name == 'pull_request'
+      if: >-
+        github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.fork != true
       uses: actions/github-script@v7
       with:
         script: |

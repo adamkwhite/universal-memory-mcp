@@ -6,6 +6,7 @@ parameter; when omitted, ``Config.load(validate=False)`` is used so existing
 env-var-driven tests continue to work without modification.
 """
 
+import contextlib
 import contextvars
 import json
 import logging
@@ -616,10 +617,21 @@ def init_default_logging(config: "Config | None" = None):
             except TypeError:
                 log_file = str(get_default_log_file())
         else:
-            home = os.getenv("HOME")
-            if home:
-                # Fallback to manual construction
-                log_file = os.path.join(home, ".claude-memory", "logs", "claude-mcp.log")
+            # path_utils could not be imported, so construct the default by
+            # hand. ``Path.home()`` rather than ``os.getenv("HOME")``: POSIX
+            # falls back to the pwd database when HOME is unset, and Windows
+            # resolves ``~`` from ``USERPROFILE`` (or ``HOMEDRIVE`` +
+            # ``HOMEPATH``) and never consults ``HOME`` at all -- which made
+            # this branch dead code there, silently leaving a Windows install
+            # with no log file. It raises RuntimeError when it cannot resolve
+            # a home directory, which is exactly the "leave log_file unset"
+            # case the old ``if home:`` guard covered.
+            #
+            # Resolving once also closes the TOCTOU window the old code had:
+            # it called os.getenv("HOME") twice, once to test and once inside
+            # os.path.join, so HOME going away in between raised TypeError.
+            with contextlib.suppress(RuntimeError):
+                log_file = str(Path.home() / ".claude-memory" / "logs" / "claude-mcp.log")
 
     # Console output for MCP server mode (must remain False by default to
     # avoid corrupting the JSON-RPC stream over stdout).

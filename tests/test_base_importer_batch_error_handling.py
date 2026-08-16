@@ -79,7 +79,7 @@ def test_batch_import_skips_raising_file_and_keeps_processing_the_rest(temp_dir)
     boom = Path(temp_dir) / "boom.json"
     good_two = Path(temp_dir) / "good2.json"
     for p in (good_one, boom, good_two):
-        p.write_text("{}")
+        p.write_text("{}", encoding="utf-8")
 
     result = importer.batch_import([good_one, boom, good_two])
 

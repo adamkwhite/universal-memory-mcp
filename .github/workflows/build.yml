@@ -8,22 +8,21 @@ on:
   push:
     branches:
       - main
-    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore', '.github/**']
+    paths-ignore: ['*.md', 'docs/**', 'LICENSE', '.gitignore']
   pull_request:
     branches:
       - main
     # NO paths-ignore here on purpose (mirrors job-agent's ci.yml). A skipped
-    # WORKFLOW never reports a required status check, so a docs/.github-only
-    # PR would sit at "Expected — waiting for status" forever. Instead the
-    # workflow always starts and the `changes` job below decides whether the
-    # heavy jobs run; a skipped JOB still reports (passing) to branch
-    # protection.
+    # WORKFLOW never reports a required status check, so a docs-only PR would
+    # sit at "Expected — waiting for status" forever. Instead the workflow
+    # always starts and the `changes` job below decides whether the heavy jobs
+    # run; a skipped JOB still reports (passing) to branch protection.
     types: [opened, reopened, ready_for_review, synchronize]
 
 jobs:
   # Mirrors job-agent's `changes` job: always runs, computes whether this PR
-  # touches anything beyond docs/config, and gates the heavy jobs below on
-  # that plus draft status. See the pull_request trigger comment above for why.
+  # touches anything beyond docs, and gates the heavy jobs below on that plus
+  # draft status. See the pull_request trigger comment above for why.
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
@@ -35,7 +34,17 @@ jobs:
       code: ${{ steps.set.outputs.code }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      # `code` = "anything that isn't a docs/config-only change".
+      # `code` = "anything that isn't a docs-only change".
+      #
+      # `.github/**` is deliberately NOT excluded here. It was until a PR
+      # changing a workflow skipped every job the workflow defines -- on the
+      # PR (this filter) and again on the merge to main (paths-ignore above),
+      # so a workflow edit was never executed by CI on any branch. #206 made
+      # Tests (Windows) a required check and produced no CI run at all. A
+      # broken workflow would have landed green and detonated on the next
+      # unrelated code PR. In this repo .github/ holds only CI config -- no
+      # templates, no docs -- so treating it as code is the whole point.
+      #
       # predicate-quantifier: every is required for the `!` exclusions to
       # bind (default `some` matches `**` trivially and ignores them).
       - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
@@ -50,7 +59,6 @@ jobs:
               - '!docs/**'
               - '!LICENSE'
               - '!.gitignore'
-              - '!.github/**'
       - name: Resolve flags
         id: set
         # Non-PR events (push, workflow_dispatch) have no base to diff
@@ -66,7 +74,7 @@ jobs:
   quick-checks:
     name: Quick Validation
     needs: [changes]
-    # Skip (-> reports passing) on draft PRs and docs/.github-only PRs; run on
+    # Skip (-> reports passing) on draft PRs and docs-only PRs; run on
     # push/workflow_dispatch and on non-draft PRs that touch code.
     if: >-
       (github.event.pull_request.draft == false || github.event_name != 'pull_request')
@@ -105,6 +113,68 @@ jobs:
       - name: Type checking (Mypy)
         run: |
           mypy --config-file=pyproject.toml src
+
+      # ast-grep matches AST SHAPES that ruff and grep cannot express. The
+      # first rule is "a sqlite3.connect() used as a with-item and not wrapped
+      # in contextlib.closing" -- `with sqlite3.connect(...)` manages the
+      # TRANSACTION and leaves the handle open, which is #204. Ruff has no
+      # equivalent (968 rules, checked); the nearest, SIM115, is about open()
+      # and its advice -- "use a with statement" -- is what produces this bug.
+      # sqlite3 also emits no ResourceWarning, unlike open(), so -W error
+      # cannot see it either.
+      #
+      # WHOLE-TREE scan, unlike job-agent's changed-files-only step: that repo
+      # has a backlog of pre-existing hits, this one is at zero. Keep it at
+      # zero and this stays a whole-tree gate.
+      #
+      # Pinned + --ignore-scripts for the same S8544 reason the uv extras are
+      # pinned: an unpinned install resolves to whatever is newest at run time,
+      # and lifecycle scripts execute arbitrary code from the registry at
+      # install time, in a job holding a checkout of this repo. Sonar flagged
+      # both (S8543, S6505) on the first version of this step. --ignore-scripts
+      # costs only a startup warning -- the CLI resolves its platform binary at
+      # invocation rather than via postinstall -- verified 0.45.1 runs that way.
+      - name: Structural lint (ast-grep)
+        run: |
+          npm install -g @ast-grep/cli@0.45.1 --ignore-scripts >/dev/null 2>&1
+          ast-grep scan
+
+  # Windows portability run. Introduced non-blocking in #202 to produce a
+  # failure list (29 failed / 40 teardown errors), fixed across #204 and #205,
+  # and green on main since 4c1e944 at 875 passed / 14 skipped. Blocking as of
+  # this change -- every other job here is ubuntu-latest, and WSL is Linux for
+  # every purpose that matters, so without this nothing catches a Windows
+  # regression before a contributor does.
+  #
+  # The 14 skips are deliberate and marked: POSIX file-mode bits (chmod on
+  # Windows only toggles read-only) and the HOME-based log-path fallback
+  # (Windows resolves ~ from USERPROFILE and never sets HOME). See
+  # requires_posix_permissions / requires_posix_home in tests/conftest.py.
+  windows-tests:
+    name: Tests (Windows)
+    needs: [changes]
+    if: >-
+      (github.event.pull_request.draft == false || github.event_name != 'pull_request')
+      && needs.changes.outputs.code == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: '3.14'
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --no-build --no-install-project --extra dev
+
+      # No PYTHONPATH export here: pytest.ini's `pythonpath = . src` handles it
+      # with the right separator on both platforms.
+      # -rf prints a compact failure list at the end, which is the whole point.
+      - name: Run tests
+        run: uv run --no-sync python -m pytest tests/ --ignore=tests/test_performance_benchmarks.py -rf
 
   # Stage 2: Tests and SonarQube analysis (2-3 minutes)
   sonarqube:
@@ -146,8 +216,17 @@ jobs:
         run: |
          python -m pytest tests/ --ignore=tests/test_performance_benchmarks.py --cov=src --cov-report=xml --cov-report=term
 
+      # Skipped whenever SONAR_TOKEN isn't available to the run. GitHub
+      # withholds secrets from both dependabot and fork PRs, so the scanner
+      # fails with "Not authorized or project not found" rather than
+      # reporting a quality-gate result. Skipping the STEP (not the job)
+      # keeps `Tests & SonarQube Analysis` green on the tests it can run, so
+      # an outside contributor isn't blocked by a check they cannot fix.
+      # Coverage on their new code is verified when the branch lands on main.
       - name: SonarCloud Scan
-        if: github.actor != 'dependabot[bot]'
+        if: >-
+          github.actor != 'dependabot[bot]'
+          && github.event.pull_request.head.repo.fork != true
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

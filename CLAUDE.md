@@ -4,11 +4,13 @@
 
 **Claude Memory MCP** is a universal conversation memory system that provides persistent storage and intelligent search across multiple AI platforms. Originally designed for Claude, it now supports ChatGPT, Cursor AI, and custom formats through an extensible architecture.
 
-## Current Status (August 11, 2026)
+## Current Status (August 15, 2026)
 
 **Branch**: `main`
-**Recent Work**: Store-integrity series (#190-#196) and the rename to `universal-memory-mcp` (#197) — see `todos.md`
-**Test Coverage**: 896 passed, 1 skipped (local suite, verified `pytest -q` August 11 2026); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
+portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
+(#190–#196) and the rename to `universal-memory-mcp` (#197).
+**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 10 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
@@ -59,6 +61,93 @@ singleton at import time, before any fixture runs. Before #191 every suite run w
 conversations into `~/claude-memory` (611 junk rows out of 1381). `tests/test_storage_isolation.py`
 guards this; if it fails, stop and fix it rather than working around it.
 
+### The store is append-only — deliberately, not by omission
+
+There is **no delete anywhere**: not an MCP tool, not a `ConversationMemoryServer` method, not a
+`SearchDatabase` method. `add_conversation` and `update_conversation` exist; removal does not.
+That is the design, not a gap in the importer/exporter mirror pattern — **do not propose adding
+`delete_conversation` as a missing feature.**
+
+An append-only log is the point: a memory you can quietly edit pieces out of is worth less than
+one you cannot. Correction is what `update_conversation` is for, and note that it *prepends* a
+chained audit line (`[update <iso> — <note>]`) rather than overwriting silently — same intent.
+
+If a specific entry genuinely must be removed, treat it as an explicit one-off, not a new
+capability. It touches **six** stores, and missing any one recreates the #190/#193/#194 drift
+class:
+
+1. the conversation JSON file — delete **last**, everything else keys off it
+2. `index.json`
+3. `topics.json` — reuse `_resync_topics_index(old_topics, [], conv_id)`, never hand-edit
+4. SQLite `conversations` — the AFTER DELETE trigger cascades to `conversations_fts`
+5. SQLite `conversation_topics`
+6. SQLite `conversation_tags`
+
+Then verify **by identity, not by count**: `check_consistency()` all-zero, zero residual rows for
+that id across all three tables, `conversations_fts_docsize` == `conversations` (the #190
+invariant), and run a real content search afterwards. An orphaned FTS entry breaks *all* content
+search while `PRAGMA integrity_check` still returns `ok`.
+
+### Windows is now a supported, tested platform (#202–#206, August 2026)
+
+`build.yml` runs the suite on `windows-latest` and it is a **required check**. Before assuming a
+Windows failure is environmental, read this — the first run found a real bug in `src/`.
+
+- **Connections and file handles must be closed explicitly, never left to GC.**
+  `with sqlite3.connect(...) as conn` manages the **transaction**, not the connection: it commits
+  and leaves the handle open. All 11 call sites in `search_database.py` used that form and the
+  module had zero `.close()` calls, leaking one handle per operation (measured **with `gc`
+  disabled**: 11 after five searches, 0 only after `gc.collect()`). Linux hides this entirely
+  because an open file can still be unlinked; Windows refuses the delete. Use
+  `SearchDatabase._connect()`, and `contextlib.closing` in tests.
+  `tests/test_sqlite_connection_lifecycle.py` asserts handle counts directly, so it fails on Linux
+  too if this regresses.
+
+  Enforced by `ast-grep` (`.ast-grep/rules/sqlite-connect-not-closed.yml`, run whole-tree in the
+  `Structural lint` CI step). Nothing off-the-shelf catches this: ruff has no equivalent rule
+  (968 checked — the nearest, `SIM115`, is about `open()` and its advice *"use a with statement"*
+  is what produces the bug), and `sqlite3` emits no `ResourceWarning` the way `open()` does, so
+  `-W error::ResourceWarning` is blind to it too. Verified the rule finds all 31 real instances on
+  `c572fa8` (pre-#204) and zero on the current tree.
+
+  Scope, so the note isn't over-read: the harm was **timing, not accumulation.** CPython
+  refcounting does reclaim the connection promptly once the local goes out of scope — four live
+  MCP servers, one up 3.8 days, were each holding 7–9 total fds when measured after the fix
+  landed, not thousands. The defect was that the handle is still open *at the moment* something
+  tries to delete the file, which is a guaranteed failure on Windows and a silent non-event on
+  POSIX. Don't cite this as a production resource leak; cite it as "GC timing is not a contract".
+- **Two structural-lint mechanisms exist on purpose.** `ast-grep` (`.ast-grep/rules/`, mirroring
+  `~/Code/job-agent`) for shape-matching rules — declarative, and the tool is used across repos.
+  A hand-written AST test (`tests/test_source_encoding_invariant.py`) for the encoding invariant,
+  which is an *absence* check (no `encoding=` kwarg) plus a binary-mode carve-out that reads more
+  clearly in Python than in a rule file. Add new shape rules to ast-grep; don't migrate the
+  encoding test just for uniformity.
+- **Name `encoding="utf-8"` on every text-mode `open()`/`write_text()`/`read_text()`.** The default
+  is UTF-8 on Linux and the ANSI codepage on Windows. `tests/test_source_encoding_invariant.py`
+  enforces this across `src/`; `tests/` was swept to match in #205.
+- **`patch.dict(os.environ, {}, clear=True)` breaks `Path.home()` on Windows** — it removes
+  `USERPROFILE`/`HOMEDRIVE`/`HOMEPATH`. Use `without_app_env()` from `tests/conftest.py`, which
+  pops only this project's variables and derives the list from `Config.ENV_MAPPING`.
+- **Two markers exist for genuinely platform-specific behaviour**, both in `tests/conftest.py`:
+  `requires_posix_permissions` (Windows `chmod` only toggles the read-only attribute, never for
+  directories). Reach for it only when the behaviour under test has no Windows equivalent — not
+  to silence a portable bug. A second marker, `requires_posix_home`, was deleted in #209: it
+  existed because `init_default_logging` built its fallback path from `os.getenv("HOME")`, which
+  is a **src** portability bug, not a test constraint. Fixing src let four tests run on both
+  platforms instead of being skipped on one. When a marker starts covering for src, delete the
+  marker.
+- **To point `~` somewhere in a test, set `HOME_ENV_VAR` from `tests/conftest.py`**, not a literal
+  `"HOME"` — Windows resolves `~` from `USERPROFILE` (then `HOMEDRIVE` + `HOMEPATH`) and never
+  reads `HOME`, so a hard-coded `HOME` asserts nothing there.
+- **Don't assert on `"a/b" in str(path)`** — compare `Path.parts`. And compare `Path.resolve()` on
+  both sides of a path equality: Windows `tmp_path` arrives as the 8.3 short name (`RUNNER~1`)
+  while code under test records the long form (`runneradmin`).
+- **Resolve the home directory with `Path.home()`, never `os.getenv("HOME")`.** POSIX falls back
+  to the pwd database when `HOME` is unset; Windows never sets `HOME` at all. Fixed in #209 —
+  `init_default_logging`'s fallback was dead code on Windows, silently leaving an install with no
+  log file. `Path.home()` raises `RuntimeError` when it cannot resolve, so suppress that where
+  "no path" is an acceptable outcome.
+
 ### Recent Major Implementations
 - ✅ **Centralized Configuration** (PRs #111, #116): `src/config.py` `Config` dataclass with env/file/profile precedence and validation, wired into `server_fastmcp.py`/`logging_config.py`/`path_utils.py`. Replaces scattered `os.getenv()` reads.
 - ✅ **Export Module** (PR #115): `src/exporters/` mirrors `src/importers/` — `BaseExporter`, `JsonExporter`, `ChatgptExporter`, `Filters` dataclass. Reuses `chatgpt_schema` for output validation. Lossy on tree branching (linear chains only).
@@ -84,7 +173,7 @@ guards this; if it fails, stop and fix it rather than working around it.
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 896 tests (896 passed, 1 skipped, verified `pytest -q` August 11 2026)
+- **pytest**: Comprehensive testing framework with 902 tests (901 passed, 1 skipped, verified `pytest -q` August 15 2026)
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -216,9 +305,28 @@ pip install pytest pytest-cov pytest-asyncio
 - Target: 90%+ coverage maintained through layered testing approach
 
 **PR Quality Gate Enforcement:**
-- All PRs run 5 required status checks: `Quick Validation`, `Tests & SonarQube Analysis`, `performance-tests`, `performance-comparison`, `Analyze (python)` (wired as required checks on branch protection alongside the `ci/mirror-job-agent` CI rework — verify current state with `gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219`)
+
+There are **4** required status checks, verified against ruleset 5957219 on August 15 2026:
+
+| Required check | Workflow |
+|---|---|
+| `Quick Validation` | `build.yml` — ruff lint/format, mypy |
+| `Tests & SonarQube Analysis` | `build.yml` — pytest + coverage + SonarCloud |
+| `Tests (Windows)` | `build.yml` — the suite on `windows-latest` |
+| `Analyze (python)` | `codeql.yml` |
+
+This doc previously claimed **5**, listing `performance-tests` and `performance-comparison`
+among them. Those two jobs run on every PR and are worth reading, but they have **never** been
+wired into the ruleset and do not block merge. Re-check with:
+`gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219 --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context'`
+
 - `Tests & SonarQube Analysis` fails the PR if the SonarCloud quality gate is red. The gate ("Sonar way", verified via the SonarCloud API) requires coverage on new code ≥ **80%**, not 90% as this doc previously (incorrectly) claimed — also new duplicated lines ≤ 3% and A ratings on new security/reliability/maintainability
-- Draft PRs skip all 5 checks until flipped ready (`gh pr ready`); a skipped required check reports as passing, so a draft never blocks merge, it just hasn't been checked yet
+- `Tests (Windows)` became required in #206, after #204/#205 took the Windows suite from 29 failures + 40 teardown errors to green. The remaining Windows skips are deliberate and marked in `tests/conftest.py` with `requires_posix_permissions` (Windows `chmod` only toggles the read-only attribute, never for directories). #209 removed the second marker by fixing the src bug it was covering for.
+- Draft PRs skip all 4 checks until flipped ready (`gh pr ready`); a skipped required check reports as passing, so a draft never blocks merge, it just hasn't been checked yet
+- The `changes` path filter means a PR touching only **docs** (`*.md`, `docs/**`, `LICENSE`, `.gitignore`) **skips every heavy job**, so all its required checks report as passing without having run. That is by design: a skipped *workflow* would never report at all and would hang forever at "Expected", so the workflow always starts and the `changes` job gates the heavy jobs instead.
+- `.github/**` used to be in that exclusion list too, which meant a workflow change skipped the jobs it was changing — on the PR *and* on the merge to main. #206 made `Tests (Windows)` a required check and produced no CI run on any branch. Fixed in #208: `.github/**` now counts as code, so CI verifies its own changes.
+
+**Fork PRs (#201):** GitHub withholds secrets from forks, so the `SonarCloud Scan` step and the perf-results PR comment are gated on `github.event.pull_request.head.repo.fork != true`. Both are skipped for outside contributions rather than failing them. Coverage on a fork's new code is verified when the branch lands on main. Note that **re-running a fork PR's checks does not pick up workflow changes** — GitHub replays the workflow file from the original commit, so the contributor has to push.
 
 ## Git Workflow
 
@@ -243,15 +351,17 @@ git push origin feature/your-feature-name
 
 # 5. Open Pull Request on GitHub
 # - Open it ready (not draft) if you want CI to run now — draft PRs skip
-#   all 5 required checks until you run `gh pr ready`
+#   all 4 required checks until you run `gh pr ready`
 # - ALWAYS mention @claude in PR body or comments for review
 # - PR triggers automated testing and SonarCloud analysis
-# - Must pass all 5 required status checks before merge unlocks
+# - Must pass all 4 required status checks before merge unlocks
 # - SonarCloud's new-code coverage threshold is 80%, not 90%
 
-# 6. Merge PR (only after all 5 required checks are green)
-# - Quick Validation, Tests & SonarQube Analysis, performance-tests,
-#   performance-comparison, Analyze (python) must all pass
+# 6. Merge PR (only after all 4 required checks are green)
+# - Quick Validation, Tests & SonarQube Analysis, Tests (Windows),
+#   Analyze (python) must all pass
+# - performance-tests / performance-comparison also run, but are NOT
+#   required and do not block merge
 # - PR conversations must be resolved ✅
 ```
 
@@ -263,7 +373,7 @@ git push origin feature/your-feature-name
 - ⚠️ **This applies to todos.md, README.md, and ALL files without exception**
 
 ### **Quality Gate Requirements:**
-- All 5 required status checks must pass: `Quick Validation`, `Tests & SonarQube Analysis`, `performance-tests`, `performance-comparison`, `Analyze (python)`
+- All 4 required status checks must pass: `Quick Validation`, `Tests & SonarQube Analysis`, `Tests (Windows)`, `Analyze (python)`. `performance-tests` and `performance-comparison` run but are not required.
 - SonarCloud coverage on new code ≥ **80%** (not 90%)
 - No unresolved PR conversations
 - Linear history maintained
@@ -287,8 +397,8 @@ source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src 
 ```
 
 **Expected Results:**
-- ✅ All tests must pass (191/191 or more)
-- ✅ Coverage should be ≥ 94% (current baseline)
+- ✅ All tests must pass (901 passed, 1 skipped as of August 15 2026 — the count only grows)
+- ✅ Coverage: trust SonarCloud (88%), not a local `.coverage` file. The old "≥ 94%" figure here was a local number that never matched the dashboard.
 - ✅ No failing tests before creating PR
 
 **If tests fail:**
@@ -336,7 +446,7 @@ This prevents back-and-forth in PRs due to test failures.
   ```bash
   source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src --cov-report=term -v
   ```
-- [ ] **2. Verify All Tests Pass** (expect 896+ passing tests, 1 skipped — verified August 11 2026)
+- [ ] **2. Verify All Tests Pass** (expect 900+ passing tests, 1 skipped — verified August 15 2026; 880/10 on windows-latest)
 - [ ] **3. Check Coverage Baseline** (expect ≥88% coverage per SonarCloud, not local `.coverage`)
 - [ ] **4. Test Supporting Scripts** (if modified any scripts/ files)
 - [ ] **5. Validate Async Compatibility** (if modified async methods)

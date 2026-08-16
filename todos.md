@@ -2,6 +2,82 @@
 
 This file maintains persistent todos across Claude Code sessions.
 
+## Recent Session (August 15, 2026)
+
+**First outside contribution — PR #200 (`locivir`), and the fork-CI gap it exposed**
+
+- [x] CI could not go green on *any* fork PR. GitHub withholds secrets from forks, so
+  `SonarCloud Scan` died with "Not authorized or project not found" and
+  `performance-tests` 403'd posting its results comment — both **after** the work they
+  gate had already passed. Two required checks failing on something a contributor cannot
+  fix. Gated both steps on `github.event.pull_request.head.repo.fork != true`; the Sonar
+  step already had the same carve-out for dependabot, which has the identical no-secrets
+  problem. Skipping the *step* keeps the job green on the tests it can run.
+- [ ] **PR #200 review posted — awaiting contributor.** Two sanitizer fixes requested:
+  phrase-per-chunk so `llama.cpp` stops matching `"llama" OR "cpp"`, and restore the
+  `len(term) >= 2` filter (dropping it made a query of `a` match every document).
+  Cleared on review: no store-integrity regression, `get_conversation`'s identity check
+  holds against all 783 live records, 889 passed / 1 skipped locally.
+- [x] **Windows portability — DONE (#202, #204, #205, #206, #209).** Windows is a required
+  check and the suite is green there: **880 passed, 10 skipped**. Contributor's original
+  native-Windows run: 864 passed, 1 skipped,
+  37 failures, 40 teardown errors — file-handle cleanup, POSIX path/permission
+  assumptions, console encoding, missing benchmark fixtures. Agreed 5-step plan:
+  - [x] **1.** Non-blocking `windows-tests` job on `windows-latest` so the failure list
+    comes from CI instead of someone else's laptop. Also moved import-root resolution
+    into `pytest.ini` (`pythonpath = . src`) — the old `PYTHONPATH=$PWD:$PWD/src` export
+    hard-codes the POSIX separator.
+  - [x] **2.** 19 sync `open()` calls in `src/` had no `encoding=`. **Latent, not active** —
+    an earlier note here called it a live bug, which was wrong: the index/topics writers
+    pass `json.dump(..., indent=2)` with the default `ensure_ascii=True`, so the bytes on
+    disk are pure ASCII and survive cp1252 either way. It fixed **zero** of the 29 Windows
+    failures. Still worth closing: the conversation files *are* written `ensure_ascii=False`
+    through `aiofiles.open(..., encoding="utf-8")`, so making the index match "for
+    consistency" is an obvious future tidy-up that would instantly write an index Windows
+    cannot decode — the #190–#196 class again, about codecs. Guarded by a source-level
+    invariant test rather than a behavioural one, since the defect is invisible on Linux.
+  - [x] **3.** Windows suite green: **875 passed, 14 skipped, 0 failed, 0 errors** (from
+    29 failed / 40 errors). Five groups, all test-side:
+    `chmod` assertions skipped behind a shared `requires_posix_permissions` marker (Windows
+    chmod only toggles read-only, never for directories); `patch.dict(os.environ, {}, clear=True)`
+    replaced with `without_app_env()`, which pops only this project's vars — clearing everything
+    also removes `USERPROFILE`/`HOMEDRIVE`/`HOMEPATH` and makes `Path.home()` raise; the
+    `HOME`-based log-path fallback marked `requires_posix_home`; `"a/b" in str(path)` substring
+    checks replaced with component comparisons; `Path.resolve()` on both sides of the importer
+    e2e assertions (`tmp_path` arrives as the 8.3 short name `RUNNER~1`, the importer records
+    `runneradmin`); `NamedTemporaryFile(delete=False)` + manual `unlink` fixtures converted to
+    `tmp_path`. Also swept `encoding="utf-8"` onto all 180 text-IO calls in `tests/`.
+  - [x] **4.** Teardown errors triaged — and the hypothesis was right for the wrong reason.
+    All 40 were one shape: `TemporaryDirectory()` cleanup hitting an open handle. Cause is
+    that `with sqlite3.connect(...) as conn` manages the **transaction**, not the
+    connection — it commits and leaves the handle open until GC. All 11 call sites in
+    `search_database.py` used that form and the module had **zero** `.close()` calls.
+    Measured: 1 handle after `__init__`, 6 after five adds, 11 after five searches, 0 only
+    after an explicit `gc.collect()`. A real defect, not a test artifact — Linux hides it
+    because an open file can still be unlinked, and a long-lived MCP server has no
+    guarantee about when GC runs. Fixed at the shared layer with a `_connect()` helper.
+  - [x] **5.** `continue-on-error` dropped and the job renamed `Tests (Windows)` — the
+    "non-blocking" suffix was part of the check name. Confirmed green on **main** (not just
+    on the branch that produced it) before flipping. Added to ruleset 5957219 as a 6th
+    required check.
+
+  The 14 Windows skips are deliberate and marked, not silent: POSIX file-mode bits
+  (`requires_posix_permissions`), in `tests/conftest.py` with the reasoning inline. The second
+  marker, `requires_posix_home`, is gone — see below.
+
+- [x] **Windows follow-up, now fixed (#209).** `logging_config.init_default_logging` fell back
+  to `os.getenv("HOME")` when `get_default_log_file` was unavailable. Windows resolves `~` from
+  `USERPROFILE` and never sets `HOME`, so that branch was dead code there and the install got no
+  log file. Now uses `Path.home()`, suppressing the `RuntimeError` it raises when home is
+  unresolvable — which is the same "leave it unset" outcome the old `if home:` guard gave, and
+  it closes the old TOCTOU window structurally (the old code read `HOME` twice, so it vanishing
+  in between raised `TypeError` from `os.path.join`).
+
+  The interesting part is the second-order effect: `requires_posix_home` was **covering for a src
+  bug**. Four tests were skipped on Windows to accommodate non-portable production code. Fixing
+  src deleted the marker and let all four run on both platforms. Worth remembering as a smell —
+  a skip marker that exists because *src* is non-portable is a bug report, not a test constraint.
+
 ## Recent Session (August 10-11, 2026) ✅ COMPLETED
 
 **Store integrity — one bug class, found four times (PRs #190-#196)**
@@ -59,15 +135,23 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
+- [ ] **Restart the stale MCP server processes.** Four are running on this machine, all started
+  *before* today's merges (one 3.8 days old), so they still execute the pre-#204 connection code
+  and the pre-#209 `os.getenv("HOME")` fallback. Harmless — measured 7–9 fds each, no
+  accumulation — but they hold old code until whatever owns each connection restarts. This is the
+  **second** consecutive session carrying this note (the 2026-08-11 wrap-up had the same one), so
+  it accumulates and nothing sweeps it. Consider adding a "restart MCP servers" step to the
+  wrap-up routine rather than re-discovering it each time.
+- [x] **job-agent SQLite follow-up — closed, no action.** job-agent had already shipped its own
+  `sqlite-connect-not-closed` ast-grep rule (#2969, #2972) before the heads-up landed, and more
+  completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
+  rather than whole-tree — the right call there, since that repo carries a real backlog of
+  existing sites where this one was at zero. Nothing outstanding in either repo.
 - [ ] **Publishing metadata.** `pyproject.toml` has no `license`, `authors`, `classifiers`,
   `keywords` or `[project.urls]`, and the existing `LICENSE` file is not declared. This is the
   last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already
   belongs to someone else (`maydali28/memcp` v0.3.0, same niche), and `universal-memory-mcp` is
   currently unclaimed.
-- [ ] **Verify SonarCloud PR decoration survived the repo rename.** The project key was
-  deliberately left as `adamkwhite_claude-memory-mcp` (changing it orphans the project and its
-  history), but the GitHub app's repo binding may need refreshing. The next PR's Sonar check
-  answers this; if it fails to decorate it's a re-bind in SonarCloud settings, not a code fix.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time
@@ -620,11 +704,15 @@ Transform this project from Claude-specific to universal AI assistant memory sys
 
 ### 1. **Rebranding (Low Priority)**
 
-**1.1** Project Name and Identity
-- [ ] 1.1.1 Rename project to `universal-memory-mcp`
-- [ ] 1.1.2 Update pyproject.toml name and description
-- [ ] 1.1.3 Update GitHub repository name and description
-- [ ] 1.1.4 Update all file headers and docstrings
+**1.1** Project Name and Identity — **done in #197**, except as noted
+- [x] 1.1.1 Rename project to `universal-memory-mcp`
+- [x] 1.1.2 Update pyproject.toml name and description
+- [x] 1.1.3 Update GitHub repository name and description
+- [x] 1.1.4 Update all file headers and docstrings
+  > Runtime identifiers were deliberately NOT renamed — `~/claude-memory`, `~/.claude-memory`,
+  > `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `FastMCP("claude-memory")`, `sonar.projectKey`,
+  > `claude-memory-mcp-venv`. See the naming table in CLAUDE.md. Each orphans a working
+  > install or loses SonarCloud history if "tidied up" for consistency.
 
 **1.2** Documentation Updates
 - [ ] 1.2.1 Replace "Claude" references with "AI Assistant" in README

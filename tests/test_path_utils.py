@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from conftest import without_app_env  # noqa: E402
+
 from config import Config  # noqa: E402
 from path_utils import (  # noqa: E402
     _resolve_config,
@@ -73,7 +75,7 @@ class TestGetDataDirectory:
 
     def test_default_data_directory(self):
         """Test default data directory location."""
-        with patch.dict(os.environ, {}, clear=True):
+        with without_app_env():
             data_dir = get_data_directory()
             assert data_dir == Path.home() / "claude-memory"
 
@@ -89,7 +91,10 @@ class TestGetDataDirectory:
         with patch.dict(os.environ, {"CLAUDE_MEMORY_PATH": "~/custom/memory"}):
             data_dir = get_data_directory()
             assert str(data_dir).startswith(str(Path.home()))
-            assert "custom/memory" in str(data_dir)
+            # Compare path components, not a "/"-joined substring: str(Path)
+            # uses the platform separator, so the literal never matches on
+            # Windows even when the path is correct.
+            assert data_dir.parts[-2:] == ("custom", "memory")
 
 
 class TestGetLogDirectory:
@@ -97,7 +102,7 @@ class TestGetLogDirectory:
 
     def test_default_log_directory(self):
         """Test default log directory location."""
-        with patch.dict(os.environ, {}, clear=True):
+        with without_app_env():
             log_dir = get_log_directory()
             assert log_dir == Path.home() / ".claude-memory" / "logs"
 
@@ -121,7 +126,7 @@ class TestGetDefaultLogFile:
 
     def test_default_log_file_path(self):
         """Test default log file uses log directory."""
-        with patch.dict(os.environ, {}, clear=True):
+        with without_app_env():
             log_file = get_default_log_file()
             assert log_file.name == "claude-mcp.log"
             assert log_file.parent == Path.home() / ".claude-memory" / "logs"
@@ -148,7 +153,7 @@ class TestResolveUserPath:
         """Test resolving path with environment variable."""
         resolved = resolve_user_path("$TEST_VAR/subdir")
         assert resolved.is_absolute()
-        assert "custom/location/subdir" in str(resolved)
+        assert resolved.parts[-3:] == ("custom", "location", "subdir")
 
 
 class TestEnsureDirectoryExists:
