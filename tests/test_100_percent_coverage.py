@@ -804,7 +804,7 @@ class TestMCPToolWrapperFunctions:
 
         try:
             result = await mcp_search("test", limit=1)
-            assert "Error: Test search error" in result
+            assert "Search failed for 'test': Test search error" in result
         finally:
             memory_server.search_conversations = original_search
 

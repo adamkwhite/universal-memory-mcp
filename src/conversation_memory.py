@@ -631,13 +631,16 @@ class ConversationMemoryServer:
         session_id: str | None = None,
         user_id: str | None = None,
         change_note: str | None = None,
+        record_audit: bool = True,
     ) -> dict[str, Any]:
         """Update fields on an existing conversation in place.
 
-        Mirrors ``add_conversation`` but operates on an existing record. The
-        first line of ``content`` is always rewritten with a self-documenting
-        change line — ``[update <iso-timestamp> — <change_note>]`` — so the
-        record carries its own audit trail (chained for repeated updates).
+        Mirrors ``add_conversation`` but operates on an existing record. By
+        default the first line of ``content`` is rewritten with a
+        self-documenting change line —
+        ``[update <iso-timestamp> — <change_note>]``. Set ``record_audit`` to
+        ``False`` only for authoritative imports whose content must remain an
+        exact replica of the source system.
 
         Tag ops: ``set_tags`` replaces the full list; ``add_tags`` /
         ``remove_tags`` mutate it. ``set_tags`` is mutually exclusive with the
@@ -690,18 +693,19 @@ class ConversationMemoryServer:
             conversation_data["tags"] = new_tags
             changes.append("tags")
 
-        if not changes and change_note is None:
+        if not changes and (change_note is None or not record_audit):
             return {
                 "status": "error",
                 "message": "No changes provided",
             }
 
-        # Compose blockchain-style audit line and prepend to content.
-        timestamp = datetime.now().isoformat(timespec="seconds")
-        note = change_note if change_note else "; ".join(changes) or "no-op"
-        audit_line = f"[update {timestamp} — {note}]"
-        body = conversation_data.get("content", "")
-        conversation_data["content"] = f"{audit_line}\n\n{body}"
+        audit_line = None
+        if record_audit:
+            timestamp = datetime.now().isoformat(timespec="seconds")
+            note = change_note if change_note else "; ".join(changes) or "no-op"
+            audit_line = f"[update {timestamp} — {note}]"
+            body = conversation_data.get("content", "")
+            conversation_data["content"] = f"{audit_line}\n\n{body}"
 
         # Re-extract topics now that content has changed.
         old_topics = list(conversation_data.get("topics") or [])
@@ -736,17 +740,19 @@ class ConversationMemoryServer:
         self._replace_index_entry(conversation_data, file_path)
         self._resync_topics_index(old_topics, new_topics, conversation_id)
 
-        return {
+        result = {
             "status": "success",
             "id": conversation_id,
             "file_path": str(file_path),
             "changes": changes,
-            "audit_line": audit_line,
             "message": (
                 f"Conversation {conversation_id} updated "
                 f"({', '.join(changes) if changes else 'note-only'})"
             ),
         }
+        if audit_line is not None:
+            result["audit_line"] = audit_line
+        return result
 
     def _rollback_update_conversation(self, file_path: Path, original_raw: str) -> None:
         """Undo the file write from a failed update_conversation call.
@@ -993,6 +999,22 @@ class ConversationMemoryServer:
 
         except (OSError, ValueError, KeyError, TypeError) as e:
             return f"Error retrieving conversation: {str(e)}"
+
+    async def get_conversation(self, conversation_id: str) -> dict[str, Any]:
+        """Return one complete conversation from the authoritative JSON store."""
+        file_path = self._resolve_conversation_path(conversation_id)
+        if file_path is None:
+            return {"error": f"Conversation not found or invalid ID: {conversation_id}"}
+
+        try:
+            async with aiofiles.open(file_path, encoding="utf-8") as f:
+                conversation = json.loads(await f.read())
+        except (OSError, ValueError, TypeError) as e:
+            return {"error": f"Failed to read conversation: {str(e)}"}
+
+        if not isinstance(conversation, dict) or conversation.get("id") != conversation_id:
+            return {"error": f"Conversation file identity mismatch: {conversation_id}"}
+        return conversation
 
     def _update_index(self, conversation_data: dict, file_path: Path):
         """Update the main index with new conversation"""

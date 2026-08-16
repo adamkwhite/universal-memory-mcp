@@ -8,6 +8,7 @@ extension for full-text search, replacing the linear search approach.
 
 import json
 import logging
+import re
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -364,8 +365,10 @@ class SearchDatabase:
     def search_conversations(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search conversations using FTS5."""
         try:
-            # Sanitize query for FTS5
+            # Treat user input as literal search terms, not FTS5 query syntax.
             query_cleaned = self._sanitize_fts_query(query)
+            if query_cleaned is None:
+                return []
 
             with self._connect() as conn:
                 conn.row_factory = sqlite3.Row
@@ -374,6 +377,7 @@ class SearchDatabase:
                 cursor = conn.execute(
                     """
                     SELECT c.id, c.title, c.date, c.topics_json, c.file_path,
+                           c.session_id, c.conversation_type,
                            bm25(conversations_fts) as score,
                            snippet(conversations_fts, 2, '<mark>', '</mark>', '...', 32) as preview
                     FROM conversations_fts
@@ -395,6 +399,8 @@ class SearchDatabase:
                         "score": float(row["score"]),
                         "preview": row["preview"],
                         "file_path": row["file_path"],
+                        "session_id": row["session_id"],
+                        "conversation_type": row["conversation_type"],
                     }
                     results.append(result)
 
@@ -585,26 +591,24 @@ class SearchDatabase:
             self.logger.exception(f"Stats query failed: {e}")
             return {"error": str(e)}
 
-    def _sanitize_fts_query(self, query: str) -> str:
-        """Sanitize query string for FTS5 to prevent syntax errors."""
-        # Remove special FTS5 characters that could cause syntax errors
-        special_chars = ['"', "'", "(", ")", "[", "]", "{", "}", "*", ":", "-"]
-        sanitized = query
+    def _sanitize_fts_query(self, query: str) -> str | None:
+        """Convert arbitrary user text to a safe literal FTS5 OR query.
 
-        for char in special_chars:
-            sanitized = sanitized.replace(char, " ")
-
-        # Split into terms and rejoin
-        terms = sanitized.split()
-
-        # Filter out empty terms and very short terms
-        terms = [term for term in terms if len(term) >= 2]
-
-        if not terms:
-            return "NOT_FOUND_EMPTY_QUERY"
-
-        # Join with OR operator for broader search
-        return " OR ".join(terms)
+        FTS5 has its own query language, so passing text such as ``llama.cpp``
+        or ``foo OR bar`` through unchanged can either fail parsing or change
+        the meaning of the search. Split on whitespace, extract Unicode word
+        tokens from each chunk, discard single-character tokens, and quote the
+        remaining adjacent tokens as one phrase. Whitespace-separated chunks
+        retain the existing OR semantics.
+        """
+        terms = []
+        for chunk in query.split():
+            tokens = [
+                term for term in re.findall(r"\w+", chunk, flags=re.UNICODE) if len(term) >= 2
+            ]
+            if tokens:
+                terms.append('"' + " ".join(tokens) + '"')
+        return " OR ".join(terms) if terms else None
 
     def rebuild_fts_index(self):
         """Rebuild the FTS5 index (useful after bulk imports)."""
