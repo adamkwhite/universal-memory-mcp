@@ -1,0 +1,20 @@
+id: sqlite-connect-not-closed
+language: python
+severity: error
+note: >-
+  Use SearchDatabase._connect() inside src/, or contextlib.closing() elsewhere:
+  `with closing(sqlite3.connect(path)) as conn, conn:` keeps the same
+  transaction semantics and adds the close. See src/search_database.py.
+message: >-
+  sqlite3.connect() used as a with-item: `with sqlite3.connect(...)` manages the
+  TRANSACTION, not the connection -- it commits or rolls back and leaves the
+  handle open until GC. Windows then refuses to delete the database file (#204).
+rule:
+  pattern: sqlite3.connect($$$ARGS)
+  inside:
+    kind: with_item
+    stopBy: end
+  not:
+    inside:
+      pattern: closing($$$)
+      stopBy: end

@@ -76,12 +76,25 @@ Windows failure is environmental, read this — the first run found a real bug i
   `tests/test_sqlite_connection_lifecycle.py` asserts handle counts directly, so it fails on Linux
   too if this regresses.
 
+  Enforced by `ast-grep` (`.ast-grep/rules/sqlite-connect-not-closed.yml`, run whole-tree in the
+  `Structural lint` CI step). Nothing off-the-shelf catches this: ruff has no equivalent rule
+  (968 checked — the nearest, `SIM115`, is about `open()` and its advice *"use a with statement"*
+  is what produces the bug), and `sqlite3` emits no `ResourceWarning` the way `open()` does, so
+  `-W error::ResourceWarning` is blind to it too. Verified the rule finds all 31 real instances on
+  `c572fa8` (pre-#204) and zero on the current tree.
+
   Scope, so the note isn't over-read: the harm was **timing, not accumulation.** CPython
   refcounting does reclaim the connection promptly once the local goes out of scope — four live
   MCP servers, one up 3.8 days, were each holding 7–9 total fds when measured after the fix
   landed, not thousands. The defect was that the handle is still open *at the moment* something
   tries to delete the file, which is a guaranteed failure on Windows and a silent non-event on
   POSIX. Don't cite this as a production resource leak; cite it as "GC timing is not a contract".
+- **Two structural-lint mechanisms exist on purpose.** `ast-grep` (`.ast-grep/rules/`, mirroring
+  `~/Code/job-agent`) for shape-matching rules — declarative, and the tool is used across repos.
+  A hand-written AST test (`tests/test_source_encoding_invariant.py`) for the encoding invariant,
+  which is an *absence* check (no `encoding=` kwarg) plus a binary-mode carve-out that reads more
+  clearly in Python than in a rule file. Add new shape rules to ast-grep; don't migrate the
+  encoding test just for uniformity.
 - **Name `encoding="utf-8"` on every text-mode `open()`/`write_text()`/`read_text()`.** The default
   is UTF-8 on Linux and the ANSI codepage on Windows. `tests/test_source_encoding_invariant.py`
   enforces this across `src/`; `tests/` was swept to match in #205.

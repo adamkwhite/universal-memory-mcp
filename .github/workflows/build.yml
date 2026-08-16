@@ -114,6 +114,23 @@ jobs:
         run: |
           mypy --config-file=pyproject.toml src
 
+      # ast-grep matches AST SHAPES that ruff and grep cannot express. The
+      # first rule is "a sqlite3.connect() used as a with-item and not wrapped
+      # in contextlib.closing" -- `with sqlite3.connect(...)` manages the
+      # TRANSACTION and leaves the handle open, which is #204. Ruff has no
+      # equivalent (968 rules, checked); the nearest, SIM115, is about open()
+      # and its advice -- "use a with statement" -- is what produces this bug.
+      # sqlite3 also emits no ResourceWarning, unlike open(), so -W error
+      # cannot see it either.
+      #
+      # WHOLE-TREE scan, unlike job-agent's changed-files-only step: that repo
+      # has a backlog of pre-existing hits, this one is at zero. Keep it at
+      # zero and this stays a whole-tree gate.
+      - name: Structural lint (ast-grep)
+        run: |
+          npm install -g @ast-grep/cli >/dev/null 2>&1
+          ast-grep scan
+
   # Windows portability run. Introduced non-blocking in #202 to produce a
   # failure list (29 failed / 40 teardown errors), fixed across #204 and #205,
   # and green on main since 4c1e944 at 875 passed / 14 skipped. Blocking as of
