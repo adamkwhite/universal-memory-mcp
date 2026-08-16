@@ -1,0 +1,9 @@
+# ast-grep project config. Rules match AST shapes that ruff and grep cannot
+# express -- e.g. "a sqlite3.connect() used as a with-item and not wrapped in
+# contextlib.closing", which needs a relational operator (`inside`), not a
+# text pattern.
+#
+# Mirrors the setup in ~/Code/job-agent. CI runs these against files changed
+# in the PR only (see the "Structural lint" step in .github/workflows/build.yml).
+ruleDirs:
+  - .ast-grep/rules
