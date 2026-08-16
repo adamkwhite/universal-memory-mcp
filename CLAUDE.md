@@ -10,7 +10,7 @@
 **Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
 portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
 (#190–#196) and the rename to `universal-memory-mcp` (#197).
-**Test Coverage**: 900 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 875 passed / 14 skipped on `windows-latest` in CI (the 14 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 14 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
