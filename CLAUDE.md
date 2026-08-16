@@ -69,11 +69,19 @@ Windows failure is environmental, read this — the first run found a real bug i
 - **Connections and file handles must be closed explicitly, never left to GC.**
   `with sqlite3.connect(...) as conn` manages the **transaction**, not the connection: it commits
   and leaves the handle open. All 11 call sites in `search_database.py` used that form and the
-  module had zero `.close()` calls, leaking one handle per operation (measured: 11 after five
-  searches, 0 only after `gc.collect()`). Linux hides this entirely because an open file can still
-  be unlinked; Windows refuses the delete. Use `SearchDatabase._connect()`, and `contextlib.closing`
-  in tests. `tests/test_sqlite_connection_lifecycle.py` asserts handle counts directly, so it fails
-  on Linux too if this regresses.
+  module had zero `.close()` calls, leaking one handle per operation (measured **with `gc`
+  disabled**: 11 after five searches, 0 only after `gc.collect()`). Linux hides this entirely
+  because an open file can still be unlinked; Windows refuses the delete. Use
+  `SearchDatabase._connect()`, and `contextlib.closing` in tests.
+  `tests/test_sqlite_connection_lifecycle.py` asserts handle counts directly, so it fails on Linux
+  too if this regresses.
+
+  Scope, so the note isn't over-read: the harm was **timing, not accumulation.** CPython
+  refcounting does reclaim the connection promptly once the local goes out of scope — four live
+  MCP servers, one up 3.8 days, were each holding 7–9 total fds when measured after the fix
+  landed, not thousands. The defect was that the handle is still open *at the moment* something
+  tries to delete the file, which is a guaranteed failure on Windows and a silent non-event on
+  POSIX. Don't cite this as a production resource leak; cite it as "GC timing is not a contract".
 - **Name `encoding="utf-8"` on every text-mode `open()`/`write_text()`/`read_text()`.** The default
   is UTF-8 on Linux and the ANSI codepage on Windows. `tests/test_source_encoding_invariant.py`
   enforces this across `src/`; `tests/` was swept to match in #205.

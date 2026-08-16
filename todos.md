@@ -18,7 +18,9 @@ This file maintains persistent todos across Claude Code sessions.
   `len(term) >= 2` filter (dropping it made a query of `a` match every document).
   Cleared on review: no store-integrity regression, `get_conversation`'s identity check
   holds against all 783 live records, 889 passed / 1 skipped locally.
-- [ ] **Windows portability.** Contributor's native-Windows run: 864 passed, 1 skipped,
+- [x] **Windows portability — DONE (#202, #204, #205, #206, #209).** Windows is a required
+  check and the suite is green there: **880 passed, 10 skipped**. Contributor's original
+  native-Windows run: 864 passed, 1 skipped,
   37 failures, 40 teardown errors — file-handle cleanup, POSIX path/permission
   assumptions, console encoding, missing benchmark fixtures. Agreed 5-step plan:
   - [x] **1.** Non-blocking `windows-tests` job on `windows-latest` so the failure list
@@ -138,10 +140,11 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already
   belongs to someone else (`maydali28/memcp` v0.3.0, same niche), and `universal-memory-mcp` is
   currently unclaimed.
-- [ ] **Verify SonarCloud PR decoration survived the repo rename.** The project key was
-  deliberately left as `adamkwhite_claude-memory-mcp` (changing it orphans the project and its
-  history), but the GitHub app's repo binding may need refreshing. The next PR's Sonar check
-  answers this; if it fails to decorate it's a re-bind in SonarCloud settings, not a code fix.
+- [x] **SonarCloud PR decoration survived the repo rename — confirmed.** #199 was the first
+  code PR after #197 and decorated normally
+  (`sonarcloud.io/dashboard?id=adamkwhite_claude-memory-mcp&pullRequest=199`); every PR since has
+  too. The deliberately-unchanged project key was the right call. Gate currently OK: new-code
+  coverage 97.7%, duplication 0.1%, A on all three new-code ratings.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time
@@ -694,11 +697,15 @@ Transform this project from Claude-specific to universal AI assistant memory sys
 
 ### 1. **Rebranding (Low Priority)**
 
-**1.1** Project Name and Identity
-- [ ] 1.1.1 Rename project to `universal-memory-mcp`
-- [ ] 1.1.2 Update pyproject.toml name and description
-- [ ] 1.1.3 Update GitHub repository name and description
-- [ ] 1.1.4 Update all file headers and docstrings
+**1.1** Project Name and Identity — **done in #197**, except as noted
+- [x] 1.1.1 Rename project to `universal-memory-mcp`
+- [x] 1.1.2 Update pyproject.toml name and description
+- [x] 1.1.3 Update GitHub repository name and description
+- [x] 1.1.4 Update all file headers and docstrings
+  > Runtime identifiers were deliberately NOT renamed — `~/claude-memory`, `~/.claude-memory`,
+  > `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `FastMCP("claude-memory")`, `sonar.projectKey`,
+  > `claude-memory-mcp-venv`. See the naming table in CLAUDE.md. Each orphans a working
+  > install or loses SonarCloud history if "tidied up" for consistency.
 
 **1.2** Documentation Updates
 - [ ] 1.2.1 Replace "Claude" references with "AI Assistant" in README
