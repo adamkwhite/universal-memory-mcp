@@ -126,9 +126,17 @@ jobs:
       # WHOLE-TREE scan, unlike job-agent's changed-files-only step: that repo
       # has a backlog of pre-existing hits, this one is at zero. Keep it at
       # zero and this stays a whole-tree gate.
+      #
+      # Pinned + --ignore-scripts for the same S8544 reason the uv extras are
+      # pinned: an unpinned install resolves to whatever is newest at run time,
+      # and lifecycle scripts execute arbitrary code from the registry at
+      # install time, in a job holding a checkout of this repo. Sonar flagged
+      # both (S8543, S6505) on the first version of this step. --ignore-scripts
+      # costs only a startup warning -- the CLI resolves its platform binary at
+      # invocation rather than via postinstall -- verified 0.45.1 runs that way.
       - name: Structural lint (ast-grep)
         run: |
-          npm install -g @ast-grep/cli >/dev/null 2>&1
+          npm install -g @ast-grep/cli@0.45.1 --ignore-scripts >/dev/null 2>&1
           ast-grep scan
 
   # Windows portability run. Introduced non-blocking in #202 to produce a
