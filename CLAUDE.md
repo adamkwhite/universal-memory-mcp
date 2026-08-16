@@ -313,7 +313,7 @@ pip install pytest pytest-cov pytest-asyncio
 
 **PR Quality Gate Enforcement:**
 
-There are **4** required status checks, verified against ruleset 5957219 on August 15 2026:
+There are **4** required status checks, verified against ruleset 5957219 on August 15 2026, and the branch must be **up to date with `main`** before merge (see below for why):
 
 | Required check | Workflow |
 |---|---|
@@ -332,6 +332,25 @@ wired into the ruleset and do not block merge. Re-check with:
 - Draft PRs skip all 4 checks until flipped ready (`gh pr ready`); a skipped required check reports as passing, so a draft never blocks merge, it just hasn't been checked yet
 - The `changes` path filter means a PR touching only **docs** (`*.md`, `docs/**`, `LICENSE`, `.gitignore`) **skips every heavy job**, so all its required checks report as passing without having run. That is by design: a skipped *workflow* would never report at all and would hang forever at "Expected", so the workflow always starts and the `changes` job gates the heavy jobs instead.
 - `.github/**` used to be in that exclusion list too, which meant a workflow change skipped the jobs it was changing — on the PR *and* on the merge to main. #206 made `Tests (Windows)` a required check and produced no CI run on any branch. Fixed in #208: `.github/**` now counts as code, so CI verifies its own changes.
+
+**Branches must be current before merge.** Ruleset 5957219 sets
+`strict_required_status_checks_policy: true`, so GitHub blocks a merge until the branch is up to
+date with `main`. This exists because of a real near-miss on #200: it showed **all-green with a
+base 13 commits old**, and approving its held workflow runs re-released the *original* merge
+commit rather than computing a new one — so `Structural lint (ast-grep)` (added in #211) had
+never run against it, and the Windows job reported the pre-#209 skip count. A `pull_request` run
+tests base+head merged **as of when the run was created**; time passes, the base moves, the run
+does not. "All checks passing" is not the same claim as "passing against what you are about to
+merge into." Fix with `gh api -X PUT repos/{owner}/{repo}/pulls/N/update-branch`, then let CI
+re-run.
+
+**When a PR changes an API surface, grep the rationale docs in the same pass.** #213 documented
+the append-only design and stated that `update_conversation` prepends an audit line "rather than
+overwriting silently". #200 merged ~20 hours later and added `record_audit=False`, which skips it.
+The sentence still *read* as a clean statement of principle — which is exactly why it would have
+been quoted as the rule long after the code stopped matching it. Rationale prose never fails
+loudly the way a test does; it quietly starts lying, and its confident tone makes it more trusted
+as it ages. Prefer "default X, with narrow exception Y" over an absolute — absolutes break first.
 
 **Fork PRs (#201):** GitHub withholds secrets from forks, so the `SonarCloud Scan` step and the perf-results PR comment are gated on `github.event.pull_request.head.repo.fork != true`. Both are skipped for outside contributions rather than failing them. Coverage on a fork's new code is verified when the branch lands on main. Note that **re-running a fork PR's checks does not pick up workflow changes** — GitHub replays the workflow file from the original commit, so the contributor has to push.
 
