@@ -138,6 +138,13 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
+- [ ] **#216 — weekly-summary tests fail ~4h every Sunday evening.** UTC/local week-boundary
+  mismatch: tests stamp fixtures with `datetime.now(timezone.utc)` while
+  `conversation_memory.py:1084` computes the window from local `today`. Once local passes 20:00
+  EDT Sunday, UTC is already Monday and the fixture lands outside the window. Self-heals at
+  midnight, which is why it survived. Real decision attached: fix the tests (small, matches src)
+  or move `generate_weekly_summary` to UTC (correct, but changes what "this week" means for a
+  user in a non-UTC zone).
 - [ ] **Restart the stale MCP server processes — now a feature gap, not just a bugfix gap.**
   Running servers predate this weekend's merges, so they hold the pre-#204 connection code and
   the pre-#209 `HOME` fallback. As of #200 they are also missing **`get_conversation`** and the
