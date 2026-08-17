@@ -19,6 +19,7 @@ calendar day is guaranteed to differ, whatever zone the suite runs in.
 """
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -102,5 +103,9 @@ class TestWeeklySummaryAcrossZones:
 
         # The month folder follows local, so a late-evening import does not
         # jump into next month's directory on the last day of the month.
-        assert f"{local_now:%Y}" in result["file_path"]
-        assert f"{local_now:%m}" in result["file_path"].split("/")[-2]
+        # Path.parts, not split("/"): the separator is "\\" on Windows, which is
+        # the exact assumption CLAUDE.md warns about — and this line originally
+        # made it, so the required Windows check earned its keep here.
+        parts = Path(result["file_path"]).parts
+        assert f"{local_now:%Y}" in parts
+        assert any(f"{local_now:%m}" in part for part in parts)
