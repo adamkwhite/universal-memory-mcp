@@ -332,13 +332,32 @@ class ConversationMemoryServer:
 
     @staticmethod
     def _resolve_conversation_date(conversation_date: str | None) -> datetime:
-        """Parse an ISO date, falling back to now() on absence or bad input."""
+        """Parse an ISO date to NAIVE LOCAL, falling back to now() on bad input.
+
+        Timezone-aware input is converted to local wall-clock and stripped,
+        because everything else in this store is naive local: ``add_conversation``,
+        the index writers and every importer use a bare ``datetime.now()``, and
+        ``generate_weekly_summary`` windows against a local ``today``.
+
+        Without the conversion, a source that stamps UTC (an export, an API
+        import) files the conversation under the SOURCE's calendar day and then
+        disappears from the user's week whenever the two disagree — for an
+        EDT user that is every conversation after 20:00, which is not an edge
+        case. It also lands the file in the wrong ``YYYY/MM`` folder and bakes
+        the wrong date into the conversation id.
+
+        Naive input is passed through untouched: it is already local, and
+        assuming a zone for it would shift 790-odd existing records.
+        """
         if not conversation_date:
             return datetime.now()
         try:
-            return datetime.fromisoformat(conversation_date.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(conversation_date.replace("Z", "+00:00"))
         except ValueError:
             return datetime.now()
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone().replace(tzinfo=None)
+        return parsed
 
     @staticmethod
     def _derive_title(content: str) -> str:
@@ -1124,7 +1143,10 @@ class ConversationMemoryServer:
         week_conversations = []
         for conv_info in conversations:
             try:
-                conv_date = datetime.fromisoformat(conv_info["date"].replace("Z", "+00:00"))
+                # Same parser as the write path: records already stored with an
+                # offset (there are some) must be compared in local terms, or a
+                # UTC-stamped conversation falls outside the user's own week.
+                conv_date = self._resolve_conversation_date(conv_info["date"])
                 if start_of_week.date() <= conv_date.date() <= end_of_week.date():
                     file_path = self.storage_path / conv_info["file_path"]
                     if file_path.exists():
