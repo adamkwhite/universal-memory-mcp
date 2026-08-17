@@ -544,13 +544,13 @@ Line 5: Final line"""
     @pytest.mark.asyncio
     async def test_weekly_summary_file_read_exception(self, server):
         """Test weekly summary file read exception (lines 348-349)"""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Add a conversation first
         result = await server.add_conversation(
             "Test conversation for read exception",
             "Read Exception Test",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now().isoformat(),
         )
 
         # Make the conversation file unreadable to trigger exception during reading
@@ -568,13 +568,13 @@ Line 5: Final line"""
     @pytest.mark.asyncio
     async def test_weekly_summary_file_read_exception_corrupted(self, server):
         """Test weekly summary with corrupted conversation file (lines 348-349)"""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Add a conversation first
         result = await server.add_conversation(
             "Test conversation for corruption test",
             "Corruption Test",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now().isoformat(),
         )
 
         # Corrupt the conversation file to trigger exception during JSON parsing
@@ -598,12 +598,10 @@ Line 5: Final line"""
     async def test_weekly_summary_index_entry_exception(self, server):
         """Test weekly summary with malformed index entry (lines 348-349)"""
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # First add a normal conversation
-        await server.add_conversation(
-            "Test conversation", "Test", datetime.now(timezone.utc).isoformat()
-        )
+        await server.add_conversation("Test conversation", "Test", datetime.now().isoformat())
 
         # Manually corrupt the index with malformed entry to trigger exception on lines 348-349
         fake_index = {
@@ -1256,9 +1254,8 @@ Line 4: More content"""
     async def test_generate_weekly_summary_with_data(self, server):
         """Test weekly summary with conversation data"""
         # Add conversations for current week (use UTC to match _calculate_week_range)
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc)
+        current_time = datetime.now()
 
         await server.add_conversation(
             "Python code development with git repository",
