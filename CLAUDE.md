@@ -1,5 +1,19 @@
 # Universal Memory MCP - Universal AI Memory System
 
+**Rule for editing this file: never restate an enumeration.** MCP tool inventories, test counts,
+required-check lists, `file:line` citations, table/column rosters — name the code or command that is
+true by construction (`grep '@mcp.tool()' -A2 src/server_fastmcp.py`, `pytest -q | tail -1`,
+`gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219`) and let the reader run it. A prose
+copy of an enumerable fact rots while the thing it copies moves, and it rots *while still reading as
+authoritative* — which is worse than being absent, because nobody re-checks a confident sentence.
+Adopted from job-agent's `CLAUDE.md:7`, where it is measurably working: a drift sweep of that file
+on 2026-08-16 found four stale claims and **zero** enumeration drift.
+
+It cannot cover everything, and knowing where it stops matters. A *behavioural* claim — "this script
+aborts on failure", "that context manager doesn't close the connection" — has no pointer-to-code
+form. You either assert it or lose the knowledge. Those are what the `/EndSession` `CLAUDE.md` drift
+sweep exists for. Prevention for enumerable facts, sweep for behavioural ones.
+
 ## Project Overview
 
 **Claude Memory MCP** is a universal conversation memory system that provides persistent storage and intelligent search across multiple AI platforms. Originally designed for Claude, it now supports ChatGPT, Cursor AI, and custom formats through an extensible architecture.
@@ -10,7 +24,7 @@
 **Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
 portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
 (#190–#196) and the rename to `universal-memory-mcp` (#197).
-**Test Coverage**: 901 passed, 1 skipped (local suite, verified `pytest -q` August 15 2026); 880 passed / 10 skipped on `windows-latest` in CI (the 10 are marked POSIX-only, see the quality-gate section); 88% overall coverage (SonarCloud); ≥80% coverage required on new code
+**Test Coverage**: run `pytest -q | tail -1` for the local count and read the `Tests (Windows)` job for the CI one — both were restated here and both had already drifted. Windows carries a small number of deliberate POSIX-only skips (see the quality-gate section). Coverage: **SonarCloud is authoritative**, not a local `.coverage` file; ≥80% required on new code.
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
@@ -180,7 +194,7 @@ Windows failure is environmental, read this — the first run found a real bug i
 - **aiofiles**: Async file I/O operations for proper async/await compliance
 - **SQLite FTS5**: Full-text search with relevance scoring
 - **JSON Schema**: Platform format validation with jsonschema library
-- **pytest**: Comprehensive testing framework with 902 tests (901 passed, 1 skipped, verified `pytest -q` August 15 2026)
+- **pytest**: comprehensive suite across Linux and Windows — `pytest -q | tail -1` for the current count
 
 **AI Platform Support:**
 - **ChatGPT**: Complete OpenAI export format support
@@ -313,7 +327,7 @@ pip install pytest pytest-cov pytest-asyncio
 
 **PR Quality Gate Enforcement:**
 
-There are **4** required status checks, verified against ruleset 5957219 on August 15 2026, and the branch must be **up to date with `main`** before merge (see below for why):
+The required status checks are whatever ruleset 5957219 says — `gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219 --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks[].context'`. Branches must also be **up to date with `main`** before merge (see below for why). At the time of writing the set was:
 
 | Required check | Workflow |
 |---|---|
@@ -423,7 +437,7 @@ source claude-memory-mcp-venv/bin/activate && python -m pytest tests/ --cov=src 
 ```
 
 **Expected Results:**
-- ✅ All tests must pass (901 passed, 1 skipped as of August 15 2026 — the count only grows)
+- ✅ All tests must pass — compare against `pytest -q | tail -1`, don't trust a number written here
 - ✅ Coverage: trust SonarCloud (88%), not a local `.coverage` file. The old "≥ 94%" figure here was a local number that never matched the dashboard.
 - ✅ No failing tests before creating PR
 
