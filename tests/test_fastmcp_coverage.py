@@ -55,9 +55,14 @@ class TestWeeklySummaryGeneration:
     async def test_weekly_summary_with_conversations(self, server):
         """Test weekly summary generation with conversations"""
         # Add conversations for current week (use UTC to match _calculate_week_range)
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc).isoformat()
+        # `datetime.now()` local, NOT `datetime.now(timezone.utc)`: the server stamps AND
+        # windows in local time -- add_conversation, the index writers and every importer
+        # use a bare datetime.now(), and generate_weekly_summary derives its week from a
+        # local `today` (conversation_memory.py:1084). A UTC fixture lands a day ahead of
+        # the window whenever UTC has rolled over and local has not, so these failed every
+        # Sunday 20:00-24:00 EDT and healed at midnight (#216).
+        current_time = datetime.now().isoformat()
 
         await server.add_conversation(
             "Python coding discussion about functions and classes",
@@ -90,9 +95,8 @@ class TestWeeklySummaryGeneration:
     async def test_weekly_summary_topic_analysis(self, server):
         """Test that weekly summary analyzes topics correctly"""
         # Use UTC time to match _calculate_week_range
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc).isoformat()
+        current_time = datetime.now().isoformat()
 
         # Add conversation with multiple python mentions
         await server.add_conversation(
@@ -110,9 +114,8 @@ class TestWeeklySummaryGeneration:
     async def test_weekly_summary_categorization(self, server):
         """Test that conversations are categorized correctly"""
         # Use UTC time to match _calculate_week_range
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc).isoformat()
+        current_time = datetime.now().isoformat()
 
         # Add coding conversation
         await server.add_conversation(
@@ -154,9 +157,8 @@ class TestWeeklySummaryGeneration:
     async def test_weekly_summary_file_saving(self, server, temp_storage):
         """Test that weekly summary is saved to file"""
         # Use UTC time to match _calculate_week_range
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc).isoformat()
+        current_time = datetime.now().isoformat()
 
         await server.add_conversation(
             "Test conversation for file saving", "File Save Test", current_time
@@ -385,9 +387,8 @@ class TestMCPToolFunctions:
         """Test the MCP weekly summary tool"""
         # Add some test data
         # Use UTC time to match _calculate_week_range
-        from datetime import timezone
 
-        current_time = datetime.now(timezone.utc).isoformat()
+        current_time = datetime.now().isoformat()
         await server.add_conversation(
             "Weekly summary test conversation", "Weekly Test", current_time
         )
