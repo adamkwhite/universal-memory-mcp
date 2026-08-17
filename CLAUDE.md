@@ -126,7 +126,7 @@ Windows failure is environmental, read this — the first run found a real bug i
 
   Enforced by `ast-grep` (`.ast-grep/rules/sqlite-connect-not-closed.yml`, run whole-tree in the
   `Structural lint` CI step). Nothing off-the-shelf catches this: ruff has no equivalent rule
-  (968 checked — the nearest, `SIM115`, is about `open()` and its advice *"use a with statement"*
+  (checked the whole rule set with `ruff rule --all` — the nearest, `SIM115`, is about `open()` and its advice *"use a with statement"*
   is what produces the bug), and `sqlite3` emits no `ResourceWarning` the way `open()` does, so
   `-W error::ResourceWarning` is blind to it too. Verified the rule finds all 31 real instances on
   `c572fa8` (pre-#204) and zero on the current tree.
@@ -571,6 +571,11 @@ The system uses a pluggable importer architecture where each AI platform has a d
 - Cross-platform conversation sync and merging
 
 ## Recent Changes
+
+> **Everything below is a dated snapshot, not a current claim.** Test counts, coverage
+> percentages and file inventories in these sections were true on the date of their
+> heading and are not maintained. For anything current, run the command — see the
+> no-restated-enumerations rule at the top of this file.
 
 ### **November 24, 2025 - Repository Maintenance ✅**
 

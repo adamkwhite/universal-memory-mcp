@@ -138,7 +138,7 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
-- [ ] **#216 — weekly-summary tests fail ~4h every Sunday evening.** UTC/local week-boundary
+- [x] **#216 — weekly-summary tests fail ~4h every Sunday evening — FIXED (#218).** UTC/local week-boundary
   mismatch: tests stamp fixtures with `datetime.now(timezone.utc)` while
   `conversation_memory.py:1084` computes the window from local `today`. Once local passes 20:00
   EDT Sunday, UTC is already Monday and the fixture lands outside the window. Self-heals at
@@ -151,7 +151,8 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   conversation IDs in search results — so the new retrieval tool is unreachable from any live
   session until each connection restarts. Harmless otherwise (measured 7–9 fds each, no
   accumulation). **Third** consecutive session carrying this note; nothing sweeps it, so it is
-  worth making "restart MCP servers" a standing step in the wrap-up routine.
+  worth making "restart MCP servers" a standing step in the wrap-up routine. **Fourth**
+  consecutive session as of 2026-08-16 evening.
 - [x] **job-agent SQLite follow-up — closed, no action.** job-agent had already shipped its own
   `sqlite-connect-not-closed` ast-grep rule (#2969, #2972) before the heads-up landed, and more
   completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
