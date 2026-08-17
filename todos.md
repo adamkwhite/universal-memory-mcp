@@ -145,14 +145,20 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   midnight, which is why it survived. Real decision attached: fix the tests (small, matches src)
   or move `generate_weekly_summary` to UTC (correct, but changes what "this week" means for a
   user in a non-UTC zone).
-- [ ] **Restart the stale MCP server processes — now a feature gap, not just a bugfix gap.**
-  Running servers predate this weekend's merges, so they hold the pre-#204 connection code and
-  the pre-#209 `HOME` fallback. As of #200 they are also missing **`get_conversation`** and the
-  conversation IDs in search results — so the new retrieval tool is unreachable from any live
-  session until each connection restarts. Harmless otherwise (measured 7–9 fds each, no
-  accumulation). **Third** consecutive session carrying this note; nothing sweeps it, so it is
-  worth making "restart MCP servers" a standing step in the wrap-up routine. **Fourth**
-  consecutive session as of 2026-08-16 evening.
+- [x] **Restart the stale MCP server processes — DONE 2026-08-16.** All three restarted
+  (job-agent, workout-routine, this repo's session); `get_conversation` verified working
+  end-to-end against a real record. This had survived **four** consecutive sessions, and the
+  reason is worth keeping: it was written as an agent to-do when it is **not agent-completable**.
+  `/mcp` is a user-facing command an agent cannot invoke, and killing the process without a
+  paired reconnect leaves a session with no memory tool at all — strictly worse than stale.
+  Verified by experiment: a killed MCP server does **not** respawn.
+
+  **If it recurs, write it as an instruction to the human, not a task:** "run `/mcp` in each
+  session with a `claude-memory` server older than the last release." Enumerate them with
+  `pgrep -f src/server_fastmcp.py` and read each one's owner from its parent's cwd
+  (`readlink /proc/$(awk '{print $4}' /proc/<pid>/stat)/cwd`). Note that a naive
+  `pgrep -af server_fastmcp` **inflates the count** — the shell running the pattern matches its
+  own command line.
 - [x] **job-agent SQLite follow-up — closed, no action.** job-agent had already shipped its own
   `sqlite-connect-not-closed` ast-grep rule (#2969, #2972) before the heads-up landed, and more
   completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
