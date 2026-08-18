@@ -44,11 +44,19 @@ way — each of these orphans working state if "tidied up" for consistency:
 |---|---|
 | `~/claude-memory/`, `~/.claude-memory/` | orphans every existing install's conversations |
 | `CLAUDE_MEMORY_PATH`, `CLAUDE_MEMORY_DISABLE_SQLITE`, `CLAUDE_MCP_*` | existing setups go dead |
-| `FastMCP("claude-memory")` | the key in users' `claude_desktop_config.json` |
+
 | `sonar.projectKey=adamkwhite_claude-memory-mcp` + README badge URLs | SonarCloud-side identifier — editing it orphans the project and loses all history |
 | `claude-memory-mcp-venv` | the directory exists under that name; a venv cannot be moved without breaking the absolute paths inside its scripts |
 
 A find-and-replace across the repo will hit the last two. Don't.
+
+**Corrected 2026-08-18:** this table used to carry a row for `FastMCP("claude-memory")`, justified
+as "the key in users' `claude_desktop_config.json`". **That was wrong, and it conflated two
+independent things.** The config key is whatever each user writes in their own file; the server's
+`FastMCP(...)` name is only its self-reported `serverInfo.name`. They happened to match here,
+which is likely how the confusion started. The server is now `FastMCP("universal-memory-mcp")`
+and no existing config broke. The `~/claude-memory` storage rows above are a genuinely different
+concern and still stand.
 
 **One path DID change, and it is not on that list: the server's location.** #225 moved the
 modules into `src/universal_memory_mcp/`, so an MCP config pointing at `src/server_fastmcp.py`
