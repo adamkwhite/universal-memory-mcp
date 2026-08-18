@@ -70,7 +70,7 @@ jobs:
           # still proving the artifact imports for real, and --no-build means no
           # setup script runs in a job holding publish credentials (S8541).
           uv sync --locked --no-build --no-install-project
-          uv pip install --no-deps --python .venv/bin/python dist/*.whl
+          uv pip install --no-deps --no-build --python .venv/bin/python dist/*.whl
           .venv/bin/python -c "
           import importlib.util
           for m in ('server_fastmcp','conversation_memory','search_database','config',
