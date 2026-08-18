@@ -347,6 +347,19 @@ wired into the ruleset and do not block merge. Re-check with:
 - The `changes` path filter means a PR touching only **docs** (`*.md`, `docs/**`, `LICENSE`, `.gitignore`) **skips every heavy job**, so all its required checks report as passing without having run. That is by design: a skipped *workflow* would never report at all and would hang forever at "Expected", so the workflow always starts and the `changes` job gates the heavy jobs instead.
 - `.github/**` used to be in that exclusion list too, which meant a workflow change skipped the jobs it was changing — on the PR *and* on the merge to main. #206 made `Tests (Windows)` a required check and produced no CI run on any branch. Fixed in #208: `.github/**` now counts as code, so CI verifies its own changes.
 
+**Auto-merge is on, and so is auto-update.** Repo settings (2026-08-17):
+`allow_auto_merge`, `allow_update_branch`, `delete_branch_on_merge` — all true. Enable auto-merge
+on a PR (`gh pr merge <n> --squash --auto`) and GitHub merges it when the required checks go
+green, so there is no watch-and-merge loop. `--delete-branch` is no longer needed; the repo
+deletes merged head branches itself (and never had permission to delete a *fork's* branch, which
+made that flag error confusingly on #200).
+
+These were enabled specifically to absorb the friction the strict policy below creates: two PRs
+in one evening (#217, #226) went `BEHIND` because an earlier PR merged underneath them, each
+needing a manual `update-branch` and re-run. Note the friction came from stacking PRs, not from
+the policy — merging sequentially never triggers it. **Do not disable strict to make the
+`BEHIND` state go away**; that trades a real protection for a habit.
+
 **Branches must be current before merge.** Ruleset 5957219 sets
 `strict_required_status_checks_policy: true`, so GitHub blocks a merge until the branch is up to
 date with `main`. This exists because of a real near-miss on #200: it showed **all-green with a
