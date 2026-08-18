@@ -174,7 +174,7 @@ class FastMCPConversationMemoryServer(CoreMemoryServer):
 
 
 # Initialize FastMCP server and memory system
-mcp = FastMCP("claude-memory")
+mcp = FastMCP("universal-memory-mcp")
 memory_server = FastMCPConversationMemoryServer()
 
 
