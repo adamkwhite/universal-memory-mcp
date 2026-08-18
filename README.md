@@ -39,8 +39,14 @@ That gives you a `universal-memory-mcp` console script, which is what an MCP con
 at — more robust than an absolute path into a checkout:
 
 ```json
-{ "mcpServers": { "claude-memory": { "command": "universal-memory-mcp" } } }
+{ "mcpServers": { "universal-memory-mcp": { "command": "universal-memory-mcp" } } }
 ```
+
+> **Upgrading from 0.1.0?** The server key was `claude-memory` in earlier examples. Rename it
+> if you like — the key is yours to choose and nothing depends on it — but note that renaming
+> changes the tool namespace your client exposes (`mcp__claude-memory__*` →
+> `mcp__universal-memory-mcp__*`). Stored conversations are unaffected either way; they live
+> in `~/claude-memory/` and that path has not changed.
 
 Install from source instead if you intend to modify it — the steps below do that.
 
@@ -184,7 +190,7 @@ Add to your Claude Desktop MCP config:
 ```json
 {
   "mcpServers": {
-    "claude-memory": {
+    "universal-memory-mcp": {
       "command": "python",
       "args": ["/absolute/path/to/universal-memory-mcp/src/universal_memory_mcp/server_fastmcp.py"],
       "cwd": "/absolute/path/to/universal-memory-mcp"

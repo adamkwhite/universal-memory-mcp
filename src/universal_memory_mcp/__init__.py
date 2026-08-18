@@ -7,4 +7,4 @@ one top-level name. Before #225 the modules sat loose in ``src/``, which meant
 while claiming ``importers``/``exporters``/``schemas`` as top-level names.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
