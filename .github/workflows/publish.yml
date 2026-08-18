@@ -1,0 +1,95 @@
+name: Publish to PyPI
+
+# Tag-gated on purpose: nothing here fires on a push to main, on a PR, or on a
+# manual run against an arbitrary branch. The only way to publish is to tag a
+# commit `vX.Y.Z`, which makes releasing a deliberate act rather than a side
+# effect of merging.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+# No PyPI token anywhere. Publishing uses Trusted Publishing (OIDC): PyPI is
+# configured to trust this repo + workflow + environment and mints a
+# short-lived credential per run, so nothing long-lived exists to leak.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify the artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: '3.14'
+          enable-cache: true
+
+      # The tag is the source of truth. A tag disagreeing with pyproject.toml
+      # means someone tagged the wrong commit, and PyPI would publish the
+      # pyproject version under a misleading tag -- unfixable afterwards,
+      # because a version number can never be reused.
+      - name: Tag must match the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(uv run --no-project --with tomli python -c \
+                 'import tomli;print(tomli.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          echo "tag=$tag  pyproject=$pkg"
+          [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != pyproject $pkg"; exit 1; }
+
+      - name: Build
+        run: uv build
+
+      # Validates the metadata and that the README renders on PyPI. A README
+      # that fails to render cannot be fixed in place after upload.
+      - name: Check metadata renders
+        run: uv run --with twine --no-project twine check dist/*
+
+      # The defect #225 fixed was invisible until the wheel was installed
+      # somewhere clean: packages.find skipped the loose modules, so the wheel
+      # shipped without the application AND still passed twine check. Prove the
+      # artifact works before it becomes permanent.
+      - name: Install the built wheel and smoke-test it
+        run: |
+          uv venv "$RUNNER_TEMP/verify"
+          uv pip install --python "$RUNNER_TEMP/verify/bin/python" dist/*.whl
+          "$RUNNER_TEMP/verify/bin/python" -c "
+          import importlib.util
+          for m in ('server_fastmcp','conversation_memory','search_database','config',
+                    'validators','importers','exporters','schemas'):
+              importlib.import_module(f'universal_memory_mcp.{m}')
+          leaked = [m for m in ('config','validators','schemas','importers','exporters')
+                    if importlib.util.find_spec(m) is not None]
+          assert not leaked, f'wheel claims top-level names: {leaked}'
+          print('wheel OK: all modules present, no leaked top-level names')
+          "
+          test -x "$RUNNER_TEMP/verify/bin/universal-memory-mcp"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish
+    needs: [build]
+    runs-on: ubuntu-latest
+    # The environment is a second gate: add required reviewers to `pypi` in
+    # repo settings and a release then needs an explicit approval click, even
+    # once the tag is pushed.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/universal-memory-mcp
+    permissions:
+      id-token: write   # the OIDC token Trusted Publishing exchanges. Nothing else.
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
