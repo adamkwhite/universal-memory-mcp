@@ -144,10 +144,16 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   4 typing fixes, 1 duplicated SQL literal. **Do not batch the 5 `async`-without-`await`
   findings** — several are MCP tool handlers whose callers `await` them, so removing `async`
   is an API change; check callers individually.
-- [ ] **Point the MCP configs at the published console script.** `~/.claude.json` still uses an
-  absolute path into the source tree. `"command": "universal-memory-mcp"` is more robust, but
-  decide first whether those servers should run the *published* version or your working tree —
-  they diverge as you develop.
+- [x] **MCP configs now use the published console script — DONE 2026-08-17.**
+  `uv tool install universal-memory-mcp` puts `universal-memory-mcp` on PATH; all three entries
+  in `~/.claude.json` are now `{"command": "universal-memory-mcp", "args": []}` (backup:
+  `.agent-notes/claude.json.bak-console-script`). Verified live — `get_conversation` served a
+  real record from the PyPI build.
+  **Consequence to remember: those servers are pinned to the published version.** Repo changes
+  do NOT reach them until you cut a release and `uv tool upgrade universal-memory-mcp`. The next
+  time a fix appears not to take effect in an MCP tool, this is why.
+  The server still identifies as `claude-memory` (`FastMCP("claude-memory")`), so `/mcp` lists it
+  under that name and tools stay `mcp__claude-memory__*` — only the launch command changed.
 - [x] **#216 — weekly-summary tests fail ~4h every Sunday evening — FIXED (#218).** UTC/local week-boundary
   mismatch: tests stamp fixtures with `datetime.now(timezone.utc)` while
   `conversation_memory.py:1084` computes the window from local `today`. Once local passes 20:00
