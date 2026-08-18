@@ -138,6 +138,16 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
 
 **Open**
 
+- [ ] **#232 — 21 pre-existing SonarCloud code smells**, surfaced (not caused) by the #225
+  re-path. Not gate-blocking; the gate measures new code and is OK. Splits into three
+  independent PRs: 11 suppression-comment syntax fixes (mechanical, safe in one pass),
+  4 typing fixes, 1 duplicated SQL literal. **Do not batch the 5 `async`-without-`await`
+  findings** — several are MCP tool handlers whose callers `await` them, so removing `async`
+  is an API change; check callers individually.
+- [ ] **Point the MCP configs at the published console script.** `~/.claude.json` still uses an
+  absolute path into the source tree. `"command": "universal-memory-mcp"` is more robust, but
+  decide first whether those servers should run the *published* version or your working tree —
+  they diverge as you develop.
 - [x] **#216 — weekly-summary tests fail ~4h every Sunday evening — FIXED (#218).** UTC/local week-boundary
   mismatch: tests stamp fixtures with `datetime.now(timezone.utc)` while
   `conversation_memory.py:1084` computes the window from local `today`. Once local passes 20:00
@@ -173,9 +183,11 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   not cosmetic: relative imports mean the server can no longer be launched as a loose file
   (`python .../server_fastmcp.py` now raises "attempted relative import with no known parent
   package"), which is exactly how MCP configs invoked it.
-- [ ] **Publishing is still a deliberate act that has not happened.** Nothing has been uploaded;
-  `universal-memory-mcp` on PyPI is still 404. Requires a PyPI account, an API token, and an
-  explicit `twine upload` or release workflow — none of which exist in this repo.
+- [x] **PUBLISHED — `universal-memory-mcp` 0.1.0 is live on PyPI** (2026-08-17, tag `v0.1.0`).
+  Trusted Publishing via `.github/workflows/publish.yml`; no token stored anywhere. Verified by
+  installing from the real index, not just the local wheel: all 8 modules import, no leaked
+  top-level names, console script answers a real `initialize`.
+  **A version number can never be reused — the next release is 0.1.1 or later.**
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time

@@ -66,7 +66,7 @@ Start with ChatGPT as it's the most widely used alternative to Claude, making it
 
 ### **2.1 ChatGPT Format Parser**
 
-Create `src/importers/chatgpt_importer.py`:
+Create `src/universal_memory_mcp/importers/chatgpt_importer.py`:
 
 ```python
 class ChatGPTImporter:

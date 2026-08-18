@@ -4,7 +4,7 @@
 
 ### 1.1.1 Existing Search Architecture
 
-**Location**: `src/conversation_memory.py` lines 195-216
+**Location**: `src/universal_memory_mcp/conversation_memory.py` lines 195-216
 
 **Core Algorithm**: Linear search through indexed conversations with simple scoring
 
