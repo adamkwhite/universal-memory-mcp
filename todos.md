@@ -164,11 +164,18 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   completely: it also matches the `sqlite_connect` alias, and scopes the CI gate to *added* lines
   rather than whole-tree — the right call there, since that repo carries a real backlog of
   existing sites where this one was at zero. Nothing outstanding in either repo.
-- [ ] **Publishing metadata.** `pyproject.toml` has no `license`, `authors`, `classifiers`,
-  `keywords` or `[project.urls]`, and the existing `LICENSE` file is not declared. This is the
-  last gap before a first PyPI release — worth doing soon: `claude-memory-mcp` on PyPI already
-  belongs to someone else (`maydali28/memcp` v0.3.0, same niche), and `universal-memory-mcp` is
-  currently unclaimed.
+- [x] **Publishing metadata — DONE.** `license` (PEP 639 SPDX) + `license-files`, `authors`,
+  `keywords`, 11 `classifiers`, `[project.urls]`. `twine check` passes both artifacts.
+- [ ] **#225 — the package is not actually publishable, and metadata was never the blocker.**
+  Building and installing the wheel into a clean venv shows it **omits the entire application**
+  (`server_fastmcp`, `conversation_memory`, `search_database`, `config`, `validators` all
+  `No module named`) because `packages.find` only picks up directories with `__init__.py`, and
+  the 11 modules in `src/` are loose. What it *does* ship claims `exporters` and `schemas` as
+  top-level PyPI names, plus an `importers` that cannot import. Invisible locally because
+  `pip install -e .` resolves everything through a `.pth`. Real decision attached: move to
+  `src/universal_memory_mcp/` (correct, large diff, re-touches the #156/#175 import convention),
+  or don't publish and stay clone-and-run. **Not** `py-modules`, which would fix the omission by
+  squatting `config`/`validators`/`exceptions` too.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time
