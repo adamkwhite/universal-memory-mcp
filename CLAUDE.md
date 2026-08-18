@@ -18,12 +18,13 @@ sweep exists for. Prevention for enumerable facts, sweep for behavioural ones.
 
 **Claude Memory MCP** is a universal conversation memory system that provides persistent storage and intelligent search across multiple AI platforms. Originally designed for Claude, it now supports ChatGPT, Cursor AI, and custom formats through an extensible architecture.
 
-## Current Status (August 15, 2026)
+## Current Status (August 17, 2026)
 
 **Branch**: `main`
-**Recent Work**: First outside contribution (#200, open) exposed a fork-CI gap and a Windows
-portability gap; #201–#206 closed both — see `todos.md`. Before that: store-integrity series
-(#190–#196) and the rename to `universal-memory-mcp` (#197).
+**Recent Work**: **Published to PyPI as `universal-memory-mcp` 0.1.0** (#230, tag `v0.1.0`).
+Getting there required #225 — the wheel had been shipping without the application. Before that:
+the first outside contribution (#200, merged) exposed a fork-CI gap and a Windows portability
+gap, closed by #201–#209. See `todos.md`.
 **Test Coverage**: run `pytest -q | tail -1` for the local count and read the `Tests (Windows)` job for the CI one — both were restated here and both had already drifted. Windows carries a small number of deliberate POSIX-only skips (see the quality-gate section). Coverage: **SonarCloud is authoritative**, not a local `.coverage` file; ≥80% required on new code.
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
@@ -31,7 +32,7 @@ portability gap; #201–#206 closed both — see `todos.md`. Before that: store-
 > "No conversation files copied". CI generates it in `performance.yml`, and `build.yml` `--ignore`s that file,
 > so this is a local-only papercut and not a regression.
 **Code Quality**: 9 code smells, 0 security hotspots (SonarCloud, verified via API); quality gate status OK
-**Architecture**: Importer/Exporter mirror pattern (`src/importers/` ↔ `src/exporters/`); `src/config.py` is the single source of configuration truth (env > file > profile > default)
+**Architecture**: Importer/Exporter mirror pattern (`src/universal_memory_mcp/importers/` ↔ `src/universal_memory_mcp/exporters/`); `src/universal_memory_mcp/config.py` is the single source of configuration truth (env > file > profile > default)
 
 ### Naming: the project was renamed, the runtime identifiers were not (#197)
 
@@ -48,6 +49,32 @@ way — each of these orphans working state if "tidied up" for consistency:
 | `claude-memory-mcp-venv` | the directory exists under that name; a venv cannot be moved without breaking the absolute paths inside its scripts |
 
 A find-and-replace across the repo will hit the last two. Don't.
+
+**One path DID change, and it is not on that list: the server's location.** #225 moved the
+modules into `src/universal_memory_mcp/`, so an MCP config pointing at `src/server_fastmcp.py`
+now fails with `No such file or directory`. Existing installs must update `args`, or better,
+switch to the console script now that the package is on PyPI:
+`"command": "universal-memory-mcp"`. Running the file directly no longer works at all — the
+package uses relative imports, so `python .../server_fastmcp.py` raises "attempted relative
+import with no known parent package". Use the console script or
+`python -m universal_memory_mcp.server_fastmcp`.
+
+### Publishing (#226, #229, #230)
+
+Live on PyPI: https://pypi.org/project/universal-memory-mcp/ — `pip install universal-memory-mcp`.
+
+Releases are **tag-gated** and use **Trusted Publishing** (OIDC): there is no PyPI token in this
+repo or in GitHub secrets. `.github/workflows/publish.yml` fires only on a `vX.Y.Z` tag, verifies
+the tag matches `pyproject`, builds, runs `twine check`, installs the wheel into a clean venv and
+asserts every module imports with no leaked top-level names — then waits on the `pypi`
+environment's required reviewer before uploading.
+
+**A version number can never be reused.** `0.1.0` is spent; the next release is `0.1.1` or later.
+
+The wheel check in that workflow is not ceremony: before #225 the wheel passed `twine check`
+while containing **none** of the application, because `packages.find` collects directories with
+`__init__.py` and the modules were loose files. A metadata check is not an artifact check — the
+only way to know what ships is to install it somewhere clean.
 
 ### Store integrity — the bug class to watch for (August 2026)
 
@@ -170,8 +197,8 @@ Windows failure is environmental, read this — the first run found a real bug i
   "no path" is an acceptable outcome.
 
 ### Recent Major Implementations
-- ✅ **Centralized Configuration** (PRs #111, #116): `src/config.py` `Config` dataclass with env/file/profile precedence and validation, wired into `server_fastmcp.py`/`logging_config.py`/`path_utils.py`. Replaces scattered `os.getenv()` reads.
-- ✅ **Export Module** (PR #115): `src/exporters/` mirrors `src/importers/` — `BaseExporter`, `JsonExporter`, `ChatgptExporter`, `Filters` dataclass. Reuses `chatgpt_schema` for output validation. Lossy on tree branching (linear chains only).
+- ✅ **Centralized Configuration** (PRs #111, #116): `src/universal_memory_mcp/config.py` `Config` dataclass with env/file/profile precedence and validation, wired into `server_fastmcp.py`/`logging_config.py`/`path_utils.py`. Replaces scattered `os.getenv()` reads.
+- ✅ **Export Module** (PR #115): `src/universal_memory_mcp/exporters/` mirrors `src/universal_memory_mcp/importers/` — `BaseExporter`, `JsonExporter`, `ChatgptExporter`, `Filters` dataclass. Reuses `chatgpt_schema` for output validation. Lossy on tree branching (linear chains only).
 - ✅ **Universal Metadata Fields** (PR #114): `session_id`, `user_id`, `tags`, `conversation_type`, `custom_fields` plumbed through `BaseImporter.create_universal_conversation()` and populated by all four importers from real source data.
 - ✅ **Bulk Import Auto-Detect** (PR #112): `bulk_import_enhanced.py` uses `FormatDetector` to dispatch to platform importers; falls back to legacy extractor below confidence threshold. Fixed a latent broken import.
 - ✅ **Async File I/O Migration**: Converted all synchronous file operations to async using aiofiles
@@ -184,7 +211,7 @@ Windows failure is environmental, read this — the first run found a real bug i
 ### Open architectural follow-ups (see `todos.md` for full list)
 - Round-trip-able ChatGPT export — current exporter emits `mapping` structure but importer expects flat `messages` list (asymmetric).
 
-(Metadata-field FTS indexing — `tags`/`session_id`/`conversation_type` in `src/search_database.py` — was completed in PR #118. The project-wide mypy hook fix, dual `src.foo` ↔ `foo` import naming, was completed in PRs #156/#175 — the canonical bare-import migration; the hook now passes across all 68 files. Both previously listed here as open.)
+(Metadata-field FTS indexing — `tags`/`session_id`/`conversation_type` in `src/universal_memory_mcp/search_database.py` — was completed in PR #118. The project-wide mypy hook fix, dual `src.foo` ↔ `foo` import naming, was completed in PRs #156/#175 — the canonical bare-import migration; the hook now passes across all 68 files. Both previously listed here as open.)
 
 ## Technology Stack
 
@@ -691,9 +718,9 @@ The system uses a pluggable importer architecture where each AI platform has a d
 - **Impact**: Foundation for supporting all major AI platforms with standardized conversation management
 
 **Core Components Implemented:**
-- `src/format_detector.py` - Automatic platform recognition with confidence scoring (83% coverage)
-- `src/importers/` - Complete pluggable importer system (5 classes, 75-86% coverage each)
-- `src/schemas/chatgpt_schema.py` - Production-ready ChatGPT validation (57% coverage)
+- `src/universal_memory_mcp/format_detector.py` - Automatic platform recognition with confidence scoring (83% coverage)
+- `src/universal_memory_mcp/importers/` - Complete pluggable importer system (5 classes, 75-86% coverage each)
+- `src/universal_memory_mcp/schemas/chatgpt_schema.py` - Production-ready ChatGPT validation (57% coverage)
 - `docs/ai_platform_formats.md` - Comprehensive platform format research
 - `scripts/sanitize_chatgpt_export.py` - Privacy-safe development tools
 

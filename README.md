@@ -28,6 +28,22 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 
 ### Installation
 
+
+**From PyPI (recommended):**
+
+```bash
+pip install universal-memory-mcp
+```
+
+That gives you a `universal-memory-mcp` console script, which is what an MCP config should point
+at — more robust than an absolute path into a checkout:
+
+```json
+{ "mcpServers": { "claude-memory": { "command": "universal-memory-mcp" } } }
+```
+
+Install from source instead if you intend to modify it — the steps below do that.
+
 #### Option 1: Install with Claude Code (Recommended)
 
 **Quick Install** - Copy and paste this into Claude Code:
@@ -81,9 +97,8 @@ Documentation: https://code.claude.com/docs/en/mcp
    ```
 
    This installs the package in editable mode along with all required dependencies:
-   - `mcp[cli]>=1.9.2` - Model Context Protocol
-   - `jsonschema>=4.0.0` - JSON schema validation
-   - `aiofiles>=24.1.0` - Async file operations
+   Dependencies are pinned in `pyproject.toml` and locked in `uv.lock` — read them there rather
+   than from a list here, which drifts on every bump.
 
 4. **Test the system:**
    ```bash
@@ -179,14 +194,14 @@ Add to your Claude Desktop MCP config:
 ```
 
 > **Upgrading from before the package move (#225):** the server script moved from
-> `src/server_fastmcp.py` to `src/universal_memory_mcp/server_fastmcp.py`. Update the
+> `src/universal_memory_mcp/server_fastmcp.py` to `src/universal_memory_mcp/server_fastmcp.py`. Update the
 > `args` path in your config, or the server will fail to start with `No such file or
 > directory`. `python -m universal_memory_mcp.server_fastmcp` also works if the package
 > is installed.
 
 ### Configuration Precedence
 
-Settings are resolved by `src/config.py`'s `Config.load()`, consulted in this
+Settings are resolved by `src/universal_memory_mcp/config.py`'s `Config.load()`, consulted in this
 order (highest wins):
 
 1. **Environment variables** (`CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`)

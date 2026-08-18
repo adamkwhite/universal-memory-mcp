@@ -762,7 +762,7 @@ fields @timestamp, message, context.feature_flags.new_search
 
 - **Environment Variables:** See `README.md` for complete list of configuration options
 - **Performance Benchmarks:** See `tests/test_performance_benchmarks.py` for JSON vs text performance comparison
-- **Security Features:** See `src/logging_config.py` for sanitization and redaction implementation
+- **Security Features:** See `src/universal_memory_mcp/logging_config.py` for sanitization and redaction implementation
 - **Related Issues:**
   - [Issue #52](https://github.com/adamkwhite/claude-memory-mcp/issues/52) - JSON Logging Implementation
   - [Issue #16](https://github.com/adamkwhite/claude-memory-mcp/issues/16) - Correlation IDs (future enhancement)
