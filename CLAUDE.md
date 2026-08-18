@@ -863,7 +863,7 @@ Add to Claude Desktop MCP configuration:
 ```json
 {
   "mcpServers": {
-    "claude-memory": {
+    "universal-memory-mcp": {
       "command": "python",
       "args": ["/absolute/path/to/universal-memory-mcp/src/universal_memory_mcp/server_fastmcp.py"],
       "cwd": "/absolute/path/to/universal-memory-mcp"
