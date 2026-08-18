@@ -13,7 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from validators import validate_import_file_path
+from .validators import validate_import_file_path
 
 logger = logging.getLogger(__name__)
 

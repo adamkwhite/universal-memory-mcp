@@ -9,7 +9,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from format_detector import FormatDetector, PlatformType
+from universal_memory_mcp.format_detector import FormatDetector, PlatformType
 
 
 class TestFormatDetector:

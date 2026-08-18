@@ -12,8 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from validators import validate_import_file_path
-
+from ..validators import validate_import_file_path
 from .base_importer import BaseImporter, ImportResult
 
 logger = logging.getLogger(__name__)

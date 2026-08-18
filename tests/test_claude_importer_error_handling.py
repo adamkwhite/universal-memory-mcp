@@ -24,7 +24,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from importers.claude_importer import ClaudeImporter  # noqa: E402
+from universal_memory_mcp.importers.claude_importer import ClaudeImporter  # noqa: E402
 
 
 @pytest.fixture

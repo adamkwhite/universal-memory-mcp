@@ -12,7 +12,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 try:
-    import server_fastmcp
+    from universal_memory_mcp import server_fastmcp
 
     FASTMCP_AVAILABLE = True
 except ImportError:

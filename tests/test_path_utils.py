@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from conftest import without_app_env  # noqa: E402
 
-from config import Config  # noqa: E402
-from path_utils import (  # noqa: E402
+from universal_memory_mcp.config import Config  # noqa: E402
+from universal_memory_mcp.path_utils import (  # noqa: E402
     _resolve_config,
     ensure_directory_exists,
     get_data_directory,
@@ -33,7 +33,7 @@ class TestGetProjectRoot:
         assert root.is_dir()
         assert (root / "pyproject.toml").exists() or (root / ".git").exists()
 
-    @patch("path_utils.Path")
+    @patch("universal_memory_mcp.path_utils.Path")
     def test_finds_project_root_with_git(self, mock_path):
         """Test finding project root by .git directory."""
         # Mock the file structure
@@ -190,7 +190,7 @@ class TestGetUvCommand:
         mock_which.assert_called_once_with("uv")
 
     @patch("shutil.which")
-    @patch("path_utils.Path")
+    @patch("universal_memory_mcp.path_utils.Path")
     def test_find_uv_in_common_locations(self, mock_path_class, mock_which):
         """Test finding uv in common locations when not in PATH."""
         mock_which.return_value = None
@@ -216,7 +216,7 @@ class TestGetUvCommand:
         assert result == "/usr/local/bin/uv"
 
     @patch("shutil.which")
-    @patch("path_utils.Path")
+    @patch("universal_memory_mcp.path_utils.Path")
     def test_uv_not_found(self, mock_path_class, mock_which):
         """Test when uv is not found anywhere."""
         mock_which.return_value = None

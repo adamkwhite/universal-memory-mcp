@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from importers.base_importer import BaseImporter, ImportResult
+from universal_memory_mcp.importers.base_importer import BaseImporter, ImportResult
 
 
 class TestImporter(BaseImporter):

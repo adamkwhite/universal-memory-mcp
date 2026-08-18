@@ -16,7 +16,7 @@ if str(SRC_DIR) not in sys.path:
 
 from conftest import HOME_ENV_VAR  # noqa: E402
 
-from config import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.config import (  # type: ignore[import-not-found]  # noqa: E402
     DEFAULT_CONFIG_FILE,
     DEFAULT_STORAGE_PATH,
     PLATFORM_PROFILES,
@@ -425,7 +425,7 @@ class TestValidation:
 
         monkeypatch.setattr(os, "access", fake_access)
         # Patch the symbol used inside src.config too.
-        import config as config_module
+        from universal_memory_mcp import config as config_module
 
         monkeypatch.setattr(config_module.os, "access", fake_access)
 

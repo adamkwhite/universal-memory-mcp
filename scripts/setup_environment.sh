@@ -100,7 +100,7 @@ echo "🧪 Testing memory server..."
 if python3 -c "
 import sys
 sys.path.append('./src')
-from server_fastmcp import ConversationMemoryServer
+from universal_memory_mcp.server_fastmcp import ConversationMemoryServer
 print('✅ Memory server import successful')
 " 2>/dev/null; then
     echo "✅ Memory server ready"

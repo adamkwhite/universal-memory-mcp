@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from exceptions import (
+from universal_memory_mcp.exceptions import (
     ContentValidationError,
     DateValidationError,
     MetadataValidationError,
@@ -12,7 +12,7 @@ from exceptions import (
     TitleValidationError,
     ValidationError,
 )
-from validators import (
+from universal_memory_mcp.validators import (
     validate_content,
     validate_date,
     validate_import_file_path,

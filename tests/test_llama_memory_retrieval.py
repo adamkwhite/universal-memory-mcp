@@ -4,9 +4,9 @@ import asyncio
 from pathlib import Path
 from unittest.mock import patch
 
-import server_fastmcp
-from conversation_memory import ConversationMemoryServer
-from search_database import SearchDatabase
+from universal_memory_mcp import server_fastmcp
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.search_database import SearchDatabase
 
 
 def _record(*, conversation_id: str, content: str) -> dict:

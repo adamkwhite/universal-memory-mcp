@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from conversation_memory import ConversationMemoryServer
-from migrate_to_sqlite import ConversationMigrator
-from search_database import SearchDatabase
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.migrate_to_sqlite import ConversationMigrator
+from universal_memory_mcp.search_database import SearchDatabase
 
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 

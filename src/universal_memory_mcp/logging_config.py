@@ -19,13 +19,13 @@ from typing import TYPE_CHECKING, ClassVar
 
 # Import path utilities for dynamic path resolution
 try:
-    from path_utils import get_default_log_file
+    from .path_utils import get_default_log_file
 except ImportError:
     # Fallback if path_utils is not available
     get_default_log_file = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:  # pragma: no cover - type-only import
-    from config import Config
+    from .config import Config
 
 
 def _resolve_config(config: "Config | None") -> "Config":
@@ -37,7 +37,7 @@ def _resolve_config(config: "Config | None") -> "Config":
     """
     if config is not None:
         return config
-    from config import Config as _Config
+    from .config import Config as _Config
 
     return _Config.load(validate=False)
 

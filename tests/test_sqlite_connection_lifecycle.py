@@ -20,7 +20,7 @@ import sqlite3
 import psutil
 import pytest
 
-from search_database import SearchDatabase
+from universal_memory_mcp.search_database import SearchDatabase
 
 
 def _conversation(conv_id: str) -> dict:

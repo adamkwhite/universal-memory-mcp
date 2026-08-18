@@ -15,17 +15,17 @@ from mcp.server.fastmcp import FastMCP
 # directory when run as ``python3 src/server_fastmcp.py``). No package
 # context is required, so there's no relative-import fallback to maintain --
 # that dual try/except used to generate every no-redef mypy error here.
-from config import Config
-from conversation_memory import ConversationMemoryServer as CoreMemoryServer
-from exceptions import ValidationError
-from logging_config import (
+from .config import Config
+from .conversation_memory import ConversationMemoryServer as CoreMemoryServer
+from .exceptions import ValidationError
+from .logging_config import (
     get_logger,
     init_default_logging,
     log_function_call,
     log_security_event,
     set_correlation_id,
 )
-from validators import (
+from .validators import (
     validate_conversation_type,
     validate_session_id,
     validate_tags,
@@ -533,5 +533,17 @@ async def get_search_stats() -> str:
 #     return response
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console-script entry point (``universal-memory-mcp``).
+
+    Exists so the package can be launched without naming a file path. Running
+    the module file directly no longer works — the modules use relative
+    imports, so ``python .../server_fastmcp.py`` raises "attempted relative
+    import with no known parent package". Use the console script, or
+    ``python -m universal_memory_mcp.server_fastmcp``.
+    """
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

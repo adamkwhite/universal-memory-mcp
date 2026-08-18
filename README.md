@@ -33,7 +33,7 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 **Quick Install** - Copy and paste this into Claude Code:
 
 ```bash
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/server_fastmcp.py"
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
 ```
 
 **Important**: Replace `$HOME/Code/universal-memory-mcp` with the actual path where you cloned this repository.
@@ -42,13 +42,13 @@ claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal
 
 ```bash
 # If cloned to ~/Code/universal-memory-mcp (default)
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/server_fastmcp.py"
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
 
 # If cloned to ~/projects/universal-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/projects/universal-memory-mcp && python3 src/server_fastmcp.py"
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/projects/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
 
 # If cloned to ~/dev/universal-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/dev/universal-memory-mcp && python3 src/server_fastmcp.py"
+claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/dev/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
 ```
 
 **What this does:**
@@ -95,7 +95,7 @@ Documentation: https://code.claude.com/docs/en/mcp
 #### MCP Server Mode
 ```bash
 # Run as MCP server (from project root)
-python3 src/server_fastmcp.py
+python3 src/universal_memory_mcp/server_fastmcp.py
 
 # Or from src directory
 cd src && python3 server_fastmcp.py
@@ -171,12 +171,18 @@ Add to your Claude Desktop MCP config:
   "mcpServers": {
     "claude-memory": {
       "command": "python",
-      "args": ["/absolute/path/to/universal-memory-mcp/src/server_fastmcp.py"],
+      "args": ["/absolute/path/to/universal-memory-mcp/src/universal_memory_mcp/server_fastmcp.py"],
       "cwd": "/absolute/path/to/universal-memory-mcp"
     }
   }
 }
 ```
+
+> **Upgrading from before the package move (#225):** the server script moved from
+> `src/server_fastmcp.py` to `src/universal_memory_mcp/server_fastmcp.py`. Update the
+> `args` path in your config, or the server will fail to start with `No such file or
+> directory`. `python -m universal_memory_mcp.server_fastmcp` also works if the package
+> is installed.
 
 ### Configuration Precedence
 

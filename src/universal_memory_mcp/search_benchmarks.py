@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from conversation_memory import ConversationMemoryServer
+from .conversation_memory import ConversationMemoryServer
 
 
 class SearchBenchmark:

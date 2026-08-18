@@ -17,8 +17,10 @@ SRC_DIR = Path(__file__).resolve().parents[2] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from exporters.base_exporter import Filters  # type: ignore[import-not-found]  # noqa: E402
-from exporters.json_exporter import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.exporters.base_exporter import (  # noqa: E402
+    Filters,  # type: ignore[import-not-found]
+)
+from universal_memory_mcp.exporters.json_exporter import (  # type: ignore[import-not-found]  # noqa: E402
     JSON_EXPORT_FORMAT_VERSION,
     JsonExporter,
 )
@@ -294,7 +296,7 @@ class TestJsonExporterRoundTrip:
     def test_round_trip_preserves_key_universal_fields(self, tmp_path):
         # Lazy import: avoid mypy following src/importers into the schema
         # module which has a pre-existing missing-stubs warning.
-        from importers.chatgpt_importer import (  # type: ignore[import-not-found]
+        from universal_memory_mcp.importers.chatgpt_importer import (  # type: ignore[import-not-found]
             ChatGPTImporter,
         )
 

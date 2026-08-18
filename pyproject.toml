@@ -49,6 +49,12 @@ dependencies = [
 # githubactions:S8544 -- "Using dependencies without locking resolved
 # versions is security-sensitive"). Bump a version here, then run `uv lock`
 # to update uv.lock to match -- CI enforces the two stay in sync.
+[project.scripts]
+# Lets an MCP config say `"command": "universal-memory-mcp"` instead of naming an
+# absolute path into the source tree — which is what broke when #225 moved the
+# modules into a package (relative imports cannot be run as a loose script).
+universal-memory-mcp = "universal_memory_mcp.server_fastmcp:main"
+
 [project.urls]
 Homepage = "https://github.com/adamkwhite/universal-memory-mcp"
 Repository = "https://github.com/adamkwhite/universal-memory-mcp"
@@ -83,6 +89,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+# Only universal_memory_mcp and its subpackages. Before #225 the modules sat loose in
+# src/, so find() skipped them entirely and the wheel shipped without the application.
+include = ["universal_memory_mcp*"]
 
 [tool.ruff]
 line-length = 100

@@ -8,7 +8,7 @@ and wiring through Config -> setup_logging.
 
 import logging
 
-from logging_config import SamplingFilter, _get_log_sample_rates, setup_logging
+from universal_memory_mcp.logging_config import SamplingFilter, _get_log_sample_rates, setup_logging
 
 
 def _make_record(level=logging.INFO, context=None):
@@ -87,7 +87,7 @@ class TestSamplingNeverDropsWarningsOrErrors:
 
 class TestConfigWiring:
     def test_get_log_sample_rates_reads_from_config(self):
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         cfg = Config(log_sample_rates={"performance": 5})
         assert _get_log_sample_rates(cfg) == {"performance": 5}
@@ -113,7 +113,7 @@ class TestConfigWiring:
         # pattern this app actually uses via get_logger()). The fix moves
         # sampling to per-handler filters, so the assertion now checks the
         # handlers instead.
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         cfg = Config(log_sample_rates={"performance": 7}, console_output=False)
         logger = setup_logging(

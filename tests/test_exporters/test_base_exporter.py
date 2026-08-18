@@ -17,7 +17,7 @@ SRC_DIR = Path(__file__).resolve().parents[2] / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from exporters.base_exporter import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.exporters.base_exporter import (  # type: ignore[import-not-found]  # noqa: E402
     UNIVERSAL_REQUIRED_FIELDS,
     BaseExporter,
     ExportResult,

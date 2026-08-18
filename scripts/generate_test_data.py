@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-from conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
 # Constants
 TECH_TOPICS = [

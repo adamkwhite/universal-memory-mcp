@@ -7,7 +7,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
 # Add the project root to path using dynamic resolution
 project_root = Path(__file__).parent.parent
@@ -182,7 +182,7 @@ async def main():
     memory_dir = Path(__file__).parent.parent
 
     required_files = [
-        "server_fastmcp.py",
+        "universal_memory_mcp.server_fastmcp.py",
         "bulk_import_enhanced.py",
     ]
 

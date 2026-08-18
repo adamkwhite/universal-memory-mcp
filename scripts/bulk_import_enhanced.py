@@ -38,14 +38,14 @@ from typing import Any, Dict, List, Optional, Tuple  # noqa: E402
 # different name (``FastMCPConversationMemoryServer``).
 # Note: these are project-local modules added to ``sys.path`` above; mypy
 # can't follow them without a ``py.typed`` marker on the ``src`` package.
-from conversation_memory import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.conversation_memory import (  # type: ignore[import-not-found]  # noqa: E402
     ConversationMemoryServer,
 )
-from format_detector import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.format_detector import (  # type: ignore[import-not-found]  # noqa: E402
     FormatDetector,
     PlatformType,
 )
-from importers import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.importers import (  # type: ignore[import-not-found]  # noqa: E402
     ChatGPTImporter,
     ClaudeImporter,
     CursorImporter,

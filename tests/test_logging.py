@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from conftest import HOME_ENV_VAR, without_app_env
 
-from logging_config import (
+from universal_memory_mcp.logging_config import (
     ColoredFormatter,
     get_logger,
     init_default_logging,
@@ -117,7 +117,7 @@ class TestLoggerHelpers:
         logger = get_logger()
         assert logger.name == "universal_memory_mcp"
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_function_call(self, mock_get_logger):
         """Test function call logging"""
         mock_logger = MagicMock()
@@ -130,7 +130,7 @@ class TestLoggerHelpers:
         assert "test_function(param1=value1, param2=42)" in call_args
         assert "param3" not in call_args  # None values should be filtered
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_performance(self, mock_get_logger):
         """Test performance logging"""
         mock_logger = MagicMock()
@@ -144,7 +144,7 @@ class TestLoggerHelpers:
         assert "results=10" in call_args
         assert "query_length=25" in call_args
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_security_event_default_warning(self, mock_get_logger):
         """Test security event logging with default WARNING level"""
         mock_logger = MagicMock()
@@ -158,7 +158,7 @@ class TestLoggerHelpers:
         assert call_args[0][0] == logging.WARNING
         assert "Security Event: PATH_TRAVERSAL | Attempted ../../../etc/passwd" in call_args[0][1]
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_security_event_custom_severity(self, mock_get_logger):
         """Test security event logging with custom severity"""
         mock_logger = MagicMock()
@@ -172,7 +172,7 @@ class TestLoggerHelpers:
         assert call_args[0][0] == logging.CRITICAL
         assert "Security Event: CRITICAL_BREACH | System compromised" in call_args[0][1]
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_validation_failure(self, mock_get_logger):
         """Test validation failure logging"""
         mock_logger = MagicMock()
@@ -195,7 +195,7 @@ class TestLoggerHelpers:
         call_args = mock_logger.warning.call_args[0][0]
         assert len(call_args.split("'")[1]) <= 100  # Value should be truncated
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_file_operation_success(self, mock_get_logger):
         """Test successful file operation logging"""
         mock_logger = MagicMock()
@@ -207,7 +207,7 @@ class TestLoggerHelpers:
         call_args = mock_logger.info.call_args[0][0]
         assert "File create: /path/to/file.txt | SUCCESS | size=1024, topics=5" in call_args
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_file_operation_failure(self, mock_get_logger):
         """Test failed file operation logging"""
         mock_logger = MagicMock()
@@ -224,7 +224,7 @@ class TestInitDefaultLogging:
     """Test default logging initialization"""
 
     @without_app_env()
-    @patch("logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.setup_logging")
     def test_init_default_logging_no_env(self, mock_setup):
         """Test default logging with no environment variables"""
         init_default_logging()
@@ -252,7 +252,7 @@ class TestInitDefaultLogging:
             "CLAUDE_MCP_LOG_FILE": "/tmp/test.log",
         },
     )
-    @patch("logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.setup_logging")
     def test_init_default_logging_with_env(self, mock_setup):
         """Test default logging with environment variables"""
         init_default_logging()
@@ -264,7 +264,7 @@ class TestInitDefaultLogging:
         assert kwargs["log_file"] == "/tmp/test.log"
         assert kwargs["console_output"] is False
 
-    @patch("logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.setup_logging")
     def test_init_default_logging_home_fallback(self, mock_setup, monkeypatch, tmp_path):
         """Default log file lands under the resolved home directory.
 
@@ -283,7 +283,7 @@ class TestInitDefaultLogging:
         assert Path(kwargs["log_file"]) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
         assert kwargs["console_output"] is False
 
-    @patch("logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.setup_logging")
     def test_init_default_logging_console_enabled(self, mock_setup, monkeypatch, tmp_path):
         """Test default logging with console output explicitly enabled"""
         monkeypatch.setenv("CLAUDE_MCP_CONSOLE_OUTPUT", "true")
@@ -296,8 +296,8 @@ class TestInitDefaultLogging:
         assert Path(kwargs["log_file"]) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
         assert kwargs["console_output"] is True
 
-    @patch("logging_config.setup_logging")
-    @patch("logging_config.get_default_log_file", None)
+    @patch("universal_memory_mcp.logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.get_default_log_file", None)
     def test_init_default_logging_fallback_when_path_utils_missing(
         self, mock_setup, monkeypatch, tmp_path
     ):
@@ -314,8 +314,8 @@ class TestInitDefaultLogging:
         log_file = mock_setup.call_args.kwargs["log_file"]
         assert Path(log_file) == tmp_path / ".claude-memory" / "logs" / "claude-mcp.log"
 
-    @patch("logging_config.setup_logging")
-    @patch("logging_config.get_default_log_file", None)
+    @patch("universal_memory_mcp.logging_config.setup_logging")
+    @patch("universal_memory_mcp.logging_config.get_default_log_file", None)
     def test_init_default_logging_fallback_survives_unresolvable_home(self, mock_setup):
         """An unresolvable home leaves log_file unset instead of raising.
 
@@ -371,7 +371,7 @@ class TestLoggingExceptionHandling:
         """Test log_function_call exception handling (silent failure)"""
         # Mock get_logger to raise an exception
         with patch(
-            "logging_config.get_logger",
+            "universal_memory_mcp.logging_config.get_logger",
             side_effect=Exception("Logger error"),
         ):
             # This should trigger the exception handling in log_function_call
@@ -386,7 +386,7 @@ class TestLoggingExceptionHandling:
         """Test log_performance exception handling (silent failure)"""
         # Mock get_logger to raise an exception
         with patch(
-            "logging_config.get_logger",
+            "universal_memory_mcp.logging_config.get_logger",
             side_effect=Exception("Logger error"),
         ):
             # This should trigger the exception handling in log_performance
@@ -400,7 +400,7 @@ class TestLoggingExceptionHandling:
         """Test log_security_event exception handling (silent failure)"""
         # Mock get_logger to raise an exception
         with patch(
-            "logging_config.get_logger",
+            "universal_memory_mcp.logging_config.get_logger",
             side_effect=Exception("Logger error"),
         ):
             # This should trigger the exception handling in log_security_event
@@ -463,7 +463,7 @@ class TestLoggingExceptionHandling:
 class TestLoggingSecurity:
     """Test security enhancements in logging functions"""
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_injection_prevention_validation(self, mock_get_logger):
         """Test that log injection is prevented in validation logging"""
         mock_logger = MagicMock()
@@ -484,7 +484,7 @@ class TestLoggingSecurity:
         # Normal text should remain
         assert "normaltext" in call_args
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_injection_prevention_security(self, mock_get_logger):
         """Test that log injection is prevented in security event logging"""
         mock_logger = MagicMock()
@@ -505,7 +505,7 @@ class TestLoggingSecurity:
         # Normal text should remain
         assert "normaltext" in call_args
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_log_injection_newline_escape(self, mock_get_logger):
         """Test that newlines are properly escaped in validation logging"""
         mock_logger = MagicMock()
@@ -521,7 +521,7 @@ class TestLoggingSecurity:
         assert "\\r" in call_args
         assert "\n" not in call_args.split("'")[1]  # Not in the actual value part
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_value_truncation(self, mock_get_logger):
         """Test that long values are truncated in logging"""
         mock_logger = MagicMock()
@@ -538,7 +538,7 @@ class TestLoggingSecurity:
         # But should contain some x's (truncated portion)
         assert "x" * 50 in call_args
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_path_redaction_in_security_logging(self, mock_get_logger):
         """Test that paths are processed in security event logging"""
         mock_logger = MagicMock()
@@ -555,7 +555,7 @@ class TestLoggingSecurity:
         assert "Error accessing" in call_args
         # Path redaction behavior may vary based on the actual home directory and path resolution
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_file_operation_path_redaction(self, mock_get_logger):
         """Test that file paths are processed in file operation logging"""
         mock_logger = MagicMock()
@@ -572,7 +572,7 @@ class TestLoggingSecurity:
         assert "size=1024" in call_args
         # Path processing behavior may vary based on actual path resolution logic
 
-    @patch("logging_config.get_logger")
+    @patch("universal_memory_mcp.logging_config.get_logger")
     def test_error_resilience(self, mock_get_logger):
         """Test that logging functions don't crash on errors"""
         # Simulate logger that raises exception
@@ -596,7 +596,7 @@ class TestConfigWiring:
         import sys
 
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-        from config import Config  # type: ignore[import-not-found]
+        from universal_memory_mcp.config import Config  # type: ignore[import-not-found]
 
         cfg = Config(storage_path=str(tmp_path), log_format="json")
         log_file = tmp_path / "out.log"
@@ -611,7 +611,7 @@ class TestConfigWiring:
         # File handler exists.
         assert any(hasattr(h, "baseFilename") for h in logger.handlers)
         # The logger gets the JSON formatter when log_format='json'.
-        from logging_config import JSONFormatter
+        from universal_memory_mcp.logging_config import JSONFormatter
 
         file_handler = next(h for h in logger.handlers if hasattr(h, "baseFilename"))
         assert isinstance(file_handler.formatter, JSONFormatter)
@@ -621,7 +621,7 @@ class TestConfigWiring:
         import sys
 
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-        from config import Config  # type: ignore[import-not-found]
+        from universal_memory_mcp.config import Config  # type: ignore[import-not-found]
 
         # Make sure no log file env var leaks in.
         monkeypatch.delenv("CLAUDE_MCP_LOG_FILE", raising=False)
@@ -630,7 +630,7 @@ class TestConfigWiring:
             log_level="WARNING",
             console_output=True,
         )
-        with patch("logging_config.setup_logging") as mock_setup:
+        with patch("universal_memory_mcp.logging_config.setup_logging") as mock_setup:
             init_default_logging(cfg)
 
         mock_setup.assert_called_once()
@@ -644,8 +644,8 @@ class TestConfigWiring:
         import sys
 
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-        from config import Config  # type: ignore[import-not-found]
-        from logging_config import _get_log_format
+        from universal_memory_mcp.config import Config  # type: ignore[import-not-found]
+        from universal_memory_mcp.logging_config import _get_log_format
 
         cfg = Config(log_format="json")
         assert _get_log_format(cfg) == "json"
@@ -655,7 +655,7 @@ class TestConfigWiring:
         import sys
 
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-        import logging_config as lc
+        from universal_memory_mcp import logging_config as lc
 
         # Make Config.load raise so the defensive ``except Exception`` runs.
         def _boom(*args, **kwargs):  # noqa: ANN001, ANN002, ANN003
@@ -671,8 +671,8 @@ class TestConfigWiring:
         import sys
 
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-        from config import Config  # type: ignore[import-not-found]
-        from logging_config import _resolve_config
+        from universal_memory_mcp.config import Config  # type: ignore[import-not-found]
+        from universal_memory_mcp.logging_config import _resolve_config
 
         cfg = Config(storage_path=str(tmp_path))
         assert _resolve_config(cfg) is cfg

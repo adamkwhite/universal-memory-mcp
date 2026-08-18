@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from conversation_memory import ConversationMemoryServer as StandaloneServer
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer as StandaloneServer
 
 # Add project root and src directory to path using dynamic resolution
 project_root = Path(__file__).parent.parent
@@ -22,7 +22,7 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "tests"))
 
 try:
-    from conversation_memory import ConversationMemoryServer
+    from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
     FASTMCP_AVAILABLE = True
 except ImportError:
@@ -470,9 +470,14 @@ class TestServerIntegration:
         """Test that all required imports are available"""
         # Test core imports
         try:
-            from conversation_memory import ConversationMemoryServer  # noqa: F401
-            from exceptions import ValidationError  # noqa: F401
-            from validators import validate_content, validate_title  # noqa: F401
+            from universal_memory_mcp.conversation_memory import (
+                ConversationMemoryServer,  # noqa: F401
+            )
+            from universal_memory_mcp.exceptions import ValidationError  # noqa: F401
+            from universal_memory_mcp.validators import (  # noqa: F401
+                validate_content,
+                validate_title,
+            )
 
             assert True, "Core imports successful"
         except ImportError as e:

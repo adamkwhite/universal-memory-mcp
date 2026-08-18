@@ -166,16 +166,16 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   existing sites where this one was at zero. Nothing outstanding in either repo.
 - [x] **Publishing metadata — DONE.** `license` (PEP 639 SPDX) + `license-files`, `authors`,
   `keywords`, 11 `classifiers`, `[project.urls]`. `twine check` passes both artifacts.
-- [ ] **#225 — the package is not actually publishable, and metadata was never the blocker.**
-  Building and installing the wheel into a clean venv shows it **omits the entire application**
-  (`server_fastmcp`, `conversation_memory`, `search_database`, `config`, `validators` all
-  `No module named`) because `packages.find` only picks up directories with `__init__.py`, and
-  the 11 modules in `src/` are loose. What it *does* ship claims `exporters` and `schemas` as
-  top-level PyPI names, plus an `importers` that cannot import. Invisible locally because
-  `pip install -e .` resolves everything through a `.pth`. Real decision attached: move to
-  `src/universal_memory_mcp/` (correct, large diff, re-touches the #156/#175 import convention),
-  or don't publish and stay clone-and-run. **Not** `py-modules`, which would fix the omission by
-  squatting `config`/`validators`/`exceptions` too.
+- [x] **#225 — packaging fixed.** All modules moved under `src/universal_memory_mcp/`; the wheel
+  now contains the application and claims exactly **one** top-level name. Verified in a clean
+  venv: all 8 modules import under `universal_memory_mcp.*`, zero leaked top-level names,
+  `twine check` passes both artifacts. Adds a `universal-memory-mcp` console script — necessary,
+  not cosmetic: relative imports mean the server can no longer be launched as a loose file
+  (`python .../server_fastmcp.py` now raises "attempted relative import with no known parent
+  package"), which is exactly how MCP configs invoked it.
+- [ ] **Publishing is still a deliberate act that has not happened.** Nothing has been uploaded;
+  `universal-memory-mcp` on PyPI is still 404. Requires a PyPI account, an API token, and an
+  explicit `twine upload` or release workflow — none of which exist in this repo.
 - [ ] Repair path for detected drift. `check_consistency()` reports only. Re-indexing an orphaned
   *file* is additive and safe; deleting a *row* whose file is missing is not — a mis-set
   `CLAUDE_MEMORY_PATH` or unmounted directory makes every file look missing, and an init-time

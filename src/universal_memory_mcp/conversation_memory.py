@@ -22,7 +22,7 @@ import aiofiles
 # genuine possible failure -- SearchDatabase needs stdlib ``sqlite3``,
 # which some minimal Python builds omit -- not a dual-style redefinition.
 try:
-    from search_database import SearchDatabase
+    from .search_database import SearchDatabase
 
     SQLITE_AVAILABLE = True
 except ImportError:
@@ -31,7 +31,7 @@ except ImportError:
 # Plain absolute import, matching the ``search_database`` import above and
 # validators.py's own header comment: ``src/`` is always a direct sys.path
 # entry, so no relative-import fallback is needed here.
-from validators import validate_storage_path
+from .validators import validate_storage_path
 
 
 class ConversationMemoryServer:
@@ -1306,7 +1306,7 @@ class ConversationMemoryServer:
             return {"error": "SQLite search not enabled"}
 
         try:
-            from migrate_to_sqlite import ConversationMigrator
+            from .migrate_to_sqlite import ConversationMigrator
 
             # Determine directory structure
             use_data_dir = self.conversations_path.parent.name == "data"
