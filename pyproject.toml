@@ -74,6 +74,14 @@ dev = [
 # second, conflicting toolchain (black/isort/flake8) against the same files,
 # which is how an isort pass silently relocated a `# type: ignore` comment and
 # broke a mypy fix (#156). Pinned for the same S8544 reason as dev.
+# Release tooling, pinned and locked for the same S8544 reason as dev/lint:
+# exact pins cover direct deps only, so the publish workflow installs from
+# uv.lock rather than resolving at run time -- it is the one workflow holding
+# publish credentials.
+publish = [
+    "twine==7.0.0",
+    "tomli==2.4.1",
+]
 lint = [
     "ruff==0.16.3",
     "mypy==2.3.0",

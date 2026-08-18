@@ -422,6 +422,44 @@ That is expected and is not something you can or should fix — the test suite, 
 the Windows run all still execute normally, and coverage on your changes is checked when the
 branch lands on `main`. If you see those two skipped, nothing is wrong.
 
+## Releasing
+
+Publishing is tag-gated and uses **Trusted Publishing** (OIDC) — there is no PyPI token stored in
+this repo. `.github/workflows/publish.yml` fires only on a `vX.Y.Z` tag.
+
+One-time setup on PyPI (publisher settings for the project, or a *pending* publisher while the
+name is still unclaimed):
+
+| field | value |
+|---|---|
+| Owner | `adamkwhite` |
+| Repository | `universal-memory-mcp` |
+| Workflow | `publish.yml` |
+| Environment | `pypi` |
+
+To cut a release:
+
+```bash
+# 1. bump `version` in pyproject.toml, commit, merge to main
+# 2. tag the merged commit — the workflow refuses a tag that disagrees with pyproject
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The workflow builds, runs `twine check`, installs the wheel into a clean venv and asserts that
+every module imports and that no generic top-level name leaked, then publishes. Add required
+reviewers to the `pypi` environment in repo settings for a manual approval gate as well.
+
+**Rehearse on TestPyPI before the first real upload** — the first upload claims the name
+permanently, and a version number can never be reused:
+
+```bash
+rm -rf dist && uv build
+uv run --with twine --no-project twine upload --repository testpypi dist/*
+# TestPyPI does not mirror mcp/jsonschema/aiofiles, so pull deps from real PyPI:
+uv pip install --index-url https://test.pypi.org/simple/ \
+               --extra-index-url https://pypi.org/simple/ universal-memory-mcp
+```
+
 ## License
 
 MIT License - see LICENSE file for details

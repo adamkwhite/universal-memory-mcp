@@ -1,0 +1,110 @@
+name: Publish to PyPI
+
+# Tag-gated on purpose: nothing here fires on a push to main, on a PR, or on a
+# manual run against an arbitrary branch. The only way to publish is to tag a
+# commit `vX.Y.Z`, which makes releasing a deliberate act rather than a side
+# effect of merging.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+# No PyPI token anywhere. Publishing uses Trusted Publishing (OIDC): PyPI is
+# configured to trust this repo + workflow + environment and mints a
+# short-lived credential per run, so nothing long-lived exists to leak.
+jobs:
+  build:
+    name: Build and verify the artifacts
+    runs-on: ubuntu-latest
+    # Scoped per job rather than workflow-wide (Sonar githubactions:S8264): the
+    # publish job below needs id-token, and a workflow-level grant would hand it
+    # to this job too.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          python-version: '3.14'
+          enable-cache: true
+
+      # The tag is the source of truth. A tag disagreeing with pyproject.toml
+      # means someone tagged the wrong commit, and PyPI would publish the
+      # pyproject version under a misleading tag -- unfixable afterwards,
+      # because a version number can never be reused.
+      # Release tooling comes from uv.lock (`uv sync --locked`), not from an
+      # ad-hoc `uv run --with`. Exact pins cover direct dependencies only; the
+      # lockfile is the source of truth for the full resolved graph, which is
+      # what Sonar githubactions:S8544 is actually asking for.
+      - name: Install release tooling
+        run: |
+          uv sync --locked --no-build --no-install-project --extra publish
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Tag must match the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(python -c \
+                 'import tomli;print(tomli.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          echo "tag=$tag  pyproject=$pkg"
+          [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != pyproject $pkg"; exit 1; }
+
+      - name: Build
+        run: uv build
+
+      # Validates the metadata and that the README renders on PyPI. A README
+      # that fails to render cannot be fixed in place after upload.
+      - name: Check metadata renders
+        run: twine check dist/*
+
+      # The defect #225 fixed was invisible until the wheel was installed
+      # somewhere clean: packages.find skipped the loose modules, so the wheel
+      # shipped without the application AND still passed twine check. Prove the
+      # artifact works before it becomes permanent.
+      - name: Install the built wheel and smoke-test it
+        run: |
+          # Dependencies come from the lockfile; the wheel is then installed
+          # --no-deps on top. That keeps the resolved graph pinned (S8544) while
+          # still proving the artifact imports for real, and --no-build means no
+          # setup script runs in a job holding publish credentials (S8541).
+          uv sync --locked --no-build --no-install-project
+          uv pip install --no-deps --no-build --python .venv/bin/python dist/*.whl
+          .venv/bin/python -c "
+          import importlib.util
+          for m in ('server_fastmcp','conversation_memory','search_database','config',
+                    'validators','importers','exporters','schemas'):
+              importlib.import_module(f'universal_memory_mcp.{m}')
+          leaked = [m for m in ('config','validators','schemas','importers','exporters')
+                    if importlib.util.find_spec(m) is not None]
+          assert not leaked, f'wheel claims top-level names: {leaked}'
+          print('wheel OK: all modules present, no leaked top-level names')
+          "
+          test -f .venv/bin/universal-memory-mcp  # console script shipped and installed
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish
+    needs: [build]
+    runs-on: ubuntu-latest
+    # The environment is a second gate: add required reviewers to `pypi` in
+    # repo settings and a release then needs an explicit approval click, even
+    # once the tag is pushed.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/universal-memory-mcp
+    permissions:
+      id-token: write   # the OIDC token Trusted Publishing exchanges. Nothing else.
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
