@@ -3,6 +3,12 @@ name: "CodeQL"
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
   pull_request:
     branches: ["main"]
     # NO paths-ignore here on purpose — see build.yml's pull_request comment.
