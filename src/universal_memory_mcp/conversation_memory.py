@@ -718,13 +718,11 @@ class ConversationMemoryServer:
                 "message": "No changes provided",
             }
 
-        audit_line = None
-        if record_audit:
-            timestamp = datetime.now().isoformat(timespec="seconds")
-            note = change_note if change_note else "; ".join(changes) or "no-op"
-            audit_line = f"[update {timestamp} — {note}]"
-            body = conversation_data.get("content", "")
-            conversation_data["content"] = f"{audit_line}\n\n{body}"
+        audit_line = (
+            self._prepend_audit_line(conversation_data, changes, change_note)
+            if record_audit
+            else None
+        )
 
         # Re-extract topics now that content has changed.
         old_topics = list(conversation_data.get("topics") or [])
@@ -772,6 +770,26 @@ class ConversationMemoryServer:
         if audit_line is not None:
             result["audit_line"] = audit_line
         return result
+
+    @staticmethod
+    def _prepend_audit_line(
+        conversation_data: dict[str, Any],
+        changes: list[str],
+        change_note: str | None,
+    ) -> str:
+        """Prepend the chained audit line and return it.
+
+        Split out of ``update_conversation`` to keep that function under the
+        cognitive-complexity limit. #199 cleared all five violations in this
+        repo; #200's ``record_audit`` flag added enough branching to push this
+        one back to 19, so the branch moved rather than the limit.
+        """
+        timestamp = datetime.now().isoformat(timespec="seconds")
+        note = change_note if change_note else "; ".join(changes) or "no-op"
+        audit_line = f"[update {timestamp} — {note}]"
+        body = conversation_data.get("content", "")
+        conversation_data["content"] = f"{audit_line}\n\n{body}"
+        return audit_line
 
     def _rollback_update_conversation(self, file_path: Path, original_raw: str) -> None:
         """Undo the file write from a failed update_conversation call.
