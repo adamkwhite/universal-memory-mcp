@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from logging_config import JSONFormatter  # noqa: E402
+from universal_memory_mcp.logging_config import JSONFormatter  # noqa: E402
 
 
 def test_format_falls_back_to_basic_error_message_when_retry_still_fails():

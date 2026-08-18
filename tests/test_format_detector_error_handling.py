@@ -28,7 +28,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from format_detector import FormatDetector, PlatformType  # noqa: E402
+from universal_memory_mcp.format_detector import FormatDetector, PlatformType  # noqa: E402
 
 
 @pytest.fixture

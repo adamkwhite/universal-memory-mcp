@@ -41,7 +41,7 @@ from unittest.mock import patch  # noqa: E402
 
 import pytest  # noqa: E402
 
-from config import Config  # noqa: E402
+from universal_memory_mcp.config import Config  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

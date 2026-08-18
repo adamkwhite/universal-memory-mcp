@@ -15,8 +15,10 @@ if str(SRC_DIR) not in sys.path:
 
 from conftest import requires_posix_permissions  # noqa: E402
 
-from exporters.base_exporter import Filters  # type: ignore[import-not-found]  # noqa: E402
-from exporters.chatgpt_exporter import (  # type: ignore[import-not-found]  # noqa: E402
+from universal_memory_mcp.exporters.base_exporter import (  # noqa: E402
+    Filters,  # type: ignore[import-not-found]
+)
+from universal_memory_mcp.exporters.chatgpt_exporter import (  # type: ignore[import-not-found]  # noqa: E402
     ChatgptExporter,
 )
 
@@ -273,7 +275,7 @@ class TestChatgptExporterRoundTrip:
     def test_round_trip_chatgpt_to_chatgpt(self, tmp_path):
         # Lazy import: avoid mypy following src/importers into the schema
         # module which has a pre-existing missing-stubs warning.
-        from importers.chatgpt_importer import (  # type: ignore[import-not-found]
+        from universal_memory_mcp.importers.chatgpt_importer import (  # type: ignore[import-not-found]
             ChatGPTImporter,
         )
 

@@ -20,7 +20,7 @@ Claude Memory MCP supports structured JSON logging for production environments, 
 export CLAUDE_MCP_LOG_FORMAT=json
 
 # Start the server
-python src/server_fastmcp.py
+python src/universal_memory_mcp/server_fastmcp.py
 ```
 
 ### Verify JSON Output

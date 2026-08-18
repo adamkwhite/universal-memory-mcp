@@ -21,7 +21,7 @@ fails loudly instead of passing on a technicality.
 
 import pytest
 
-from logging_config import (
+from universal_memory_mcp.logging_config import (
     SamplingFilter,
     get_logger,
     set_correlation_id,
@@ -34,7 +34,7 @@ def _reset_correlation_id():
     """Mirrors test_correlation_id.py's fixture: don't leak a correlation ID
     set by one test into whatever test (in this file or another) runs next
     in the same process/thread."""
-    from logging_config import _correlation_id
+    from universal_memory_mcp.logging_config import _correlation_id
 
     yield
     _correlation_id.set(None)
@@ -78,7 +78,7 @@ class TestSamplingEndToEnd:
     and WARNING/ERROR are never sampled."""
 
     def test_sampling_through_child_logger_drops_records_at_configured_rate(self, tmp_path):
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         log_file = tmp_path / "sampled.log"
         rate = 5
@@ -98,7 +98,7 @@ class TestSamplingEndToEnd:
         assert len(lines) == total // rate
 
     def test_warning_and_error_are_never_sampled_through_child_logger(self, tmp_path):
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         log_file = tmp_path / "warnings.log"
         # Absurdly high rate: if WARNING/ERROR were subject to sampling,
@@ -123,7 +123,7 @@ class TestNoDoubleCountingAcrossHandlers:
     rate)."""
 
     def test_two_handlers_do_not_double_count(self, tmp_path):
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         log_file = tmp_path / "multi.log"
         rate = 4

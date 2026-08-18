@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from conftest import requires_posix_permissions
 
-from conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
 
 # Mock the FastMCP import to avoid dependency issues
@@ -650,7 +650,7 @@ class TestMCPToolWrapperFunctions:
     async def test_mcp_search_tool_no_results(self):
         """Test MCP search tool wrapper when no results found"""
         # Import the MCP tool functions directly
-        from server_fastmcp import search_conversations as mcp_search
+        from universal_memory_mcp.server_fastmcp import search_conversations as mcp_search
 
         result = await mcp_search("nonexistentquery12345xyz", limit=5)
         assert "No conversations found matching" in result
@@ -658,7 +658,7 @@ class TestMCPToolWrapperFunctions:
     @pytest.mark.asyncio
     async def test_mcp_search_tool_with_error_results(self, server):
         """Test MCP search tool handles search errors gracefully"""
-        from server_fastmcp import search_conversations as mcp_search
+        from universal_memory_mcp.server_fastmcp import search_conversations as mcp_search
 
         # Test with search query that returns no results
         result = await mcp_search("nonexistent_query_12345", limit=5)
@@ -670,7 +670,7 @@ class TestMCPToolWrapperFunctions:
     @pytest.mark.asyncio
     async def test_mcp_search_tool_success_formatting(self, server):
         """Test MCP search tool result formatting"""
-        from server_fastmcp import search_conversations as mcp_search
+        from universal_memory_mcp.server_fastmcp import search_conversations as mcp_search
 
         # Add test data
         await server.add_conversation(
@@ -693,7 +693,7 @@ class TestMCPToolWrapperFunctions:
     @pytest.mark.asyncio
     async def test_mcp_add_conversation_tool(self, server):
         """Test MCP add conversation tool wrapper"""
-        from server_fastmcp import add_conversation as mcp_add
+        from universal_memory_mcp.server_fastmcp import add_conversation as mcp_add
 
         result = await mcp_add(
             "Test content for MCP add tool",
@@ -707,7 +707,7 @@ class TestMCPToolWrapperFunctions:
     @pytest.mark.asyncio
     async def test_mcp_weekly_summary_tool(self, server):
         """Test MCP weekly summary tool wrapper"""
-        from server_fastmcp import generate_weekly_summary as mcp_summary
+        from universal_memory_mcp.server_fastmcp import generate_weekly_summary as mcp_summary
 
         # Add some test data
         current_time = datetime.now().isoformat()
@@ -724,7 +724,7 @@ class TestMCPToolWrapperFunctions:
         """Test the final missing lines for 100% coverage"""
         from datetime import datetime
 
-        from server_fastmcp import search_conversations as mcp_search
+        from universal_memory_mcp.server_fastmcp import search_conversations as mcp_search
 
         # Test line 343: topics_str += "..." when more than 3 topics
         now = datetime.now()
@@ -789,7 +789,7 @@ class TestMCPToolWrapperFunctions:
 
         # Test lines 378-379: Error handling in MCP search tool
         # We need to test the mcp_search directly with error results
-        from server_fastmcp import memory_server
+        from universal_memory_mcp.server_fastmcp import memory_server
 
         # Backup original method
         original_search = memory_server.search_conversations
@@ -1327,7 +1327,7 @@ class TestServerExceptionCoverage:
 
         # Mock SearchDatabase to raise an exception during initialization
         with patch(
-            "conversation_memory.SearchDatabase",
+            "universal_memory_mcp.conversation_memory.SearchDatabase",
             side_effect=Exception("SQLite initialization failed"),
         ):
             try:

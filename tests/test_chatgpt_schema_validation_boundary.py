@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from schemas.chatgpt_schema import validate_chatgpt_export  # noqa: E402
+from universal_memory_mcp.schemas.chatgpt_schema import validate_chatgpt_export  # noqa: E402
 
 
 def test_validate_chatgpt_export_reports_error_on_real_post_schema_failure():

@@ -2,7 +2,7 @@
 
 **Rule for editing this file: never restate an enumeration.** MCP tool inventories, test counts,
 required-check lists, `file:line` citations, table/column rosters — name the code or command that is
-true by construction (`grep '@mcp.tool()' -A2 src/server_fastmcp.py`, `pytest -q | tail -1`,
+true by construction (`grep '@mcp.tool()' -A2 src/universal_memory_mcp/server_fastmcp.py`, `pytest -q | tail -1`,
 `gh api repos/adamkwhite/universal-memory-mcp/rulesets/5957219`) and let the reader run it. A prose
 copy of an enumerable fact rots while the thing it copies moves, and it rots *while still reading as
 authoritative* — which is worse than being absent, because nobody re-checks a confident sentence.
@@ -244,7 +244,7 @@ python -m pytest tests/test_100_percent_coverage.py --cov=src --cov-report=xml
 python -m pip install -r requirements.txt
 
 # Run server
-python src/server_fastmcp.py
+python src/universal_memory_mcp/server_fastmcp.py
 
 # Create a virtual environment
 python3.12 -m venv .venv   # or any interpreter satisfying >=3.10
@@ -805,10 +805,10 @@ source claude-memory-mcp-venv/bin/activate
 pip install -e .
 
 # Run server directly
-python3 src/server_fastmcp.py
+python3 src/universal_memory_mcp/server_fastmcp.py
 
 # Enable console logging for debugging
-CLAUDE_MCP_CONSOLE_OUTPUT=true python3 src/server_fastmcp.py
+CLAUDE_MCP_CONSOLE_OUTPUT=true python3 src/universal_memory_mcp/server_fastmcp.py
 ```
 
 **From src/ directory:**
@@ -830,7 +830,7 @@ Add to Claude Desktop MCP configuration:
   "mcpServers": {
     "claude-memory": {
       "command": "python",
-      "args": ["/absolute/path/to/universal-memory-mcp/src/server_fastmcp.py"],
+      "args": ["/absolute/path/to/universal-memory-mcp/src/universal_memory_mcp/server_fastmcp.py"],
       "cwd": "/absolute/path/to/universal-memory-mcp"
     }
   }

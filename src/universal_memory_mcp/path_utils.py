@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - type-only import
-    from config import Config
+    from .config import Config
 
 
 def _resolve_config(config: "Config | None") -> "Config":
@@ -29,7 +29,7 @@ def _resolve_config(config: "Config | None") -> "Config":
         return config
     # Local import keeps the module side-effect free at import time and
     # avoids a circular import between ``path_utils`` and ``config``.
-    from config import Config as _Config
+    from .config import Config as _Config
 
     return _Config.load(validate=False)
 

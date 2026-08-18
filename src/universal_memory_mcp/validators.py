@@ -11,7 +11,7 @@ from typing import Any, Union
 # this module bare (``from validators import ...``), so a relative import
 # here raises "attempted relative import with no known parent package" the
 # moment the server runs as a script.
-from exceptions import (
+from .exceptions import (
     ContentValidationError,
     DateValidationError,
     MetadataValidationError,

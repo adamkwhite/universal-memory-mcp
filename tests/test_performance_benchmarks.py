@@ -19,7 +19,7 @@ from typing import Any
 import psutil
 import pytest
 
-from conversation_memory import ConversationMemoryServer
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import conftest  # noqa: E402  (the suite's own conftest, imported as a module)
 
-import server_fastmcp  # noqa: E402
+from universal_memory_mcp import server_fastmcp  # noqa: E402
 
 
 def _real_store() -> Path:

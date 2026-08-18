@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest  # type: ignore[import-not-found]
 
-from importers.claude_importer import ClaudeImporter
+from universal_memory_mcp.importers.claude_importer import ClaudeImporter
 
 
 class TestClaudeImporter:

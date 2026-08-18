@@ -13,8 +13,8 @@ from unittest.mock import patch
 import pytest
 from conftest import requires_posix_permissions
 
-from format_detector import FormatDetector
-from importers.chatgpt_importer import ChatGPTImporter
+from universal_memory_mcp.format_detector import FormatDetector
+from universal_memory_mcp.importers.chatgpt_importer import ChatGPTImporter
 
 
 class TestImportIntegration:

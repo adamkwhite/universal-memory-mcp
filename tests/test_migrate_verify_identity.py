@@ -20,8 +20,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from conversation_memory import ConversationMemoryServer  # noqa: E402
-from migrate_to_sqlite import VERIFY_SAMPLE_LIMIT, ConversationMigrator  # noqa: E402
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer  # noqa: E402
+from universal_memory_mcp.migrate_to_sqlite import (  # noqa: E402
+    VERIFY_SAMPLE_LIMIT,
+    ConversationMigrator,
+)
 
 
 @pytest.fixture
@@ -146,7 +149,7 @@ class TestCliGate:
 
     @staticmethod
     def _run(monkeypatch, storage, verification):
-        import migrate_to_sqlite
+        from universal_memory_mcp import migrate_to_sqlite
 
         monkeypatch.setattr(
             sys,

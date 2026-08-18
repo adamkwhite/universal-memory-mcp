@@ -13,7 +13,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
-from conversation_memory import ConversationMemoryServer  # noqa: E402
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer  # noqa: E402
 
 SAMPLE_CONTENT = "# Test\n\nDiscussion of python MCP server setup with docker."
 

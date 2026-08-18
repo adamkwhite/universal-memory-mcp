@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from conversation_memory import ConversationMemoryServer  # noqa: E402
+from universal_memory_mcp.conversation_memory import ConversationMemoryServer  # noqa: E402
 
 
 @pytest.fixture
@@ -224,7 +224,7 @@ class TestSearchStatsRendering:
 
     @pytest.fixture
     def tool(self, server, monkeypatch):
-        import server_fastmcp
+        from universal_memory_mcp import server_fastmcp
 
         monkeypatch.setattr(server_fastmcp, "memory_server", server)
         return server_fastmcp.get_search_stats

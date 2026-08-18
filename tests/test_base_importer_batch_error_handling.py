@@ -27,7 +27,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from importers.base_importer import BaseImporter, ImportResult  # noqa: E402
+from universal_memory_mcp.importers.base_importer import BaseImporter, ImportResult  # noqa: E402
 
 
 class _FlakyImporter(BaseImporter):

@@ -4,8 +4,8 @@ conversation_type/custom_fields) — src/validators.py.
 
 import pytest
 
-from exceptions import MetadataValidationError
-from validators import (
+from universal_memory_mcp.exceptions import MetadataValidationError
+from universal_memory_mcp.validators import (
     MAX_CONVERSATION_TYPE_LENGTH,
     MAX_CUSTOM_FIELDS_BYTES,
     MAX_CUSTOM_FIELDS_DEPTH,

@@ -17,8 +17,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 try:
-    import server_fastmcp
-    from conversation_memory import ConversationMemoryServer
+    from universal_memory_mcp import server_fastmcp
+    from universal_memory_mcp.conversation_memory import ConversationMemoryServer
 
     FASTMCP_AVAILABLE = True
 except ImportError:
@@ -548,7 +548,7 @@ class TestFastMCPConfigWiring:
 
     def test_init_uses_supplied_config(self, home_temp_storage):
         """Passing an explicit Config bypasses Config.load() and sets storage."""
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         cfg = Config(storage_path=home_temp_storage, enable_sqlite=False)
         srv = server_fastmcp.FastMCPConversationMemoryServer(config=cfg)
@@ -561,7 +561,7 @@ class TestFastMCPConfigWiring:
 
     def test_explicit_storage_path_overrides_config(self, home_temp_storage):
         """Explicit ``storage_path`` argument wins over ``config.storage_path``."""
-        from config import Config
+        from universal_memory_mcp.config import Config
 
         # Config points to a different directory (also under HOME so it validates).
         other = tempfile.mkdtemp(prefix="other_storage_", dir=str(Path.home()))

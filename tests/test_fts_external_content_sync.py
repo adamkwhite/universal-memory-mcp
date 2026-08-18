@@ -25,7 +25,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from search_database import SearchDatabase  # noqa: E402
+from universal_memory_mcp.search_database import SearchDatabase  # noqa: E402
 
 
 def _conversation(conv_id: str, title: str, content: str) -> dict:

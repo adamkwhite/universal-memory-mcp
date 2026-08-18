@@ -12,7 +12,7 @@ from io import StringIO
 
 import pytest
 
-from logging_config import (
+from universal_memory_mcp.logging_config import (
     JSONFormatter,
     _get_log_format,
     log_file_operation,

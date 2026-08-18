@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from search_database import SearchDatabase
+from .search_database import SearchDatabase
 
 # Constants
 INDEX_JSON_FILENAME = "index.json"
