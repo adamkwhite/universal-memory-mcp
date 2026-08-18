@@ -34,10 +34,19 @@ jobs:
       # means someone tagged the wrong commit, and PyPI would publish the
       # pyproject version under a misleading tag -- unfixable afterwards,
       # because a version number can never be reused.
+      # Release tooling comes from uv.lock (`uv sync --locked`), not from an
+      # ad-hoc `uv run --with`. Exact pins cover direct dependencies only; the
+      # lockfile is the source of truth for the full resolved graph, which is
+      # what Sonar githubactions:S8544 is actually asking for.
+      - name: Install release tooling
+        run: |
+          uv sync --locked --no-build --no-install-project --extra publish
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
       - name: Tag must match the packaged version
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          pkg="$(uv run --no-project --no-build --with tomli==2.4.1 python -c \
+          pkg="$(python -c \
                  'import tomli;print(tomli.load(open("pyproject.toml","rb"))["project"]["version"])')"
           echo "tag=$tag  pyproject=$pkg"
           [ "$tag" = "$pkg" ] || { echo "::error::tag v$tag != pyproject $pkg"; exit 1; }
@@ -48,7 +57,7 @@ jobs:
       # Validates the metadata and that the README renders on PyPI. A README
       # that fails to render cannot be fixed in place after upload.
       - name: Check metadata renders
-        run: uv run --no-project --no-build --with twine==7.0.0 twine check dist/*
+        run: twine check dist/*
 
       # The defect #225 fixed was invisible until the wheel was installed
       # somewhere clean: packages.find skipped the loose modules, so the wheel
@@ -56,11 +65,13 @@ jobs:
       # artifact works before it becomes permanent.
       - name: Install the built wheel and smoke-test it
         run: |
-          uv venv "$RUNNER_TEMP/verify"
-          # --no-build: wheels only, so verifying our artifact never executes a
-          # dependency's setup script (Sonar githubactions:S8541).
-          uv pip install --no-build --python "$RUNNER_TEMP/verify/bin/python" dist/*.whl
-          "$RUNNER_TEMP/verify/bin/python" -c "
+          # Dependencies come from the lockfile; the wheel is then installed
+          # --no-deps on top. That keeps the resolved graph pinned (S8544) while
+          # still proving the artifact imports for real, and --no-build means no
+          # setup script runs in a job holding publish credentials (S8541).
+          uv sync --locked --no-build --no-install-project
+          uv pip install --no-deps --python .venv/bin/python dist/*.whl
+          .venv/bin/python -c "
           import importlib.util
           for m in ('server_fastmcp','conversation_memory','search_database','config',
                     'validators','importers','exporters','schemas'):
@@ -70,7 +81,7 @@ jobs:
           assert not leaked, f'wheel claims top-level names: {leaked}'
           print('wheel OK: all modules present, no leaked top-level names')
           "
-          test -x "$RUNNER_TEMP/verify/bin/universal-memory-mcp"
+          uv pip install --no-deps --python .venv/bin/python dist/*.whl && test -f .venv/bin/universal-memory-mcp
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
