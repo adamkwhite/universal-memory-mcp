@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "A Model Context Protocol server for searchable local storage of AI conversation history — Claude, ChatGPT, Cursor, and custom formats"
 readme = "README.md"
 requires-python = ">=3.10"
-# PEP 639 SPDX form, supported by the setuptools>=83 pinned in [build-system].
+# PEP 639 SPDX form. Requires setuptools>=77; [build-system] pins well above that.
+# 77 is a fixed external fact (the release that added PEP 639 support) and is safe to
+# name here. The PIN is not — it moves on every dependabot bump, and restating it in
+# prose drifted within hours of being written: #223 took the pin to >=84 while this
+# comment still said >=83.
 # Deliberately NO "License :: OSI Approved :: MIT License" classifier: PEP 639
 # supersedes it and PyPI rejects an upload carrying both.
 license = "MIT"
