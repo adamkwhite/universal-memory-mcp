@@ -4,6 +4,33 @@ version = "0.1.0"
 description = "A Model Context Protocol server for searchable local storage of AI conversation history — Claude, ChatGPT, Cursor, and custom formats"
 readme = "README.md"
 requires-python = ">=3.10"
+# PEP 639 SPDX form, supported by the setuptools>=83 pinned in [build-system].
+# Deliberately NO "License :: OSI Approved :: MIT License" classifier: PEP 639
+# supersedes it and PyPI rejects an upload carrying both.
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Adam White", email = "adamkwhite@gmail.com" }]
+keywords = [
+    "mcp", "model-context-protocol", "claude", "chatgpt", "cursor",
+    "memory", "conversation-history", "full-text-search", "sqlite", "fts5",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    # Linux and Windows are both verified in CI on every PR (build.yml); macOS
+    # is expected to work but has no runner, so this claims portability, not
+    # coverage.
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
 dependencies = [
     "mcp[cli]==1.29.0",
     "jsonschema==4.26.0",
@@ -18,6 +45,12 @@ dependencies = [
 # githubactions:S8544 -- "Using dependencies without locking resolved
 # versions is security-sensitive"). Bump a version here, then run `uv lock`
 # to update uv.lock to match -- CI enforces the two stay in sync.
+[project.urls]
+Homepage = "https://github.com/adamkwhite/universal-memory-mcp"
+Repository = "https://github.com/adamkwhite/universal-memory-mcp"
+Issues = "https://github.com/adamkwhite/universal-memory-mcp/issues"
+Changelog = "https://github.com/adamkwhite/universal-memory-mcp/releases"
+
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
