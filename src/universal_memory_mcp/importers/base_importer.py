@@ -349,7 +349,7 @@ class BaseImporter(ABC):
                 # Combine metadata
                 combined_metadata[str(file_path)] = result.metadata
 
-            except Exception as e:  # noqa: BLE001 - resilience: skip unimportable file, keep processing the rest of the batch
+            except Exception as e:  # noqa: BLE001  # resilience: skip unimportable file, keep processing the rest of the batch
                 self.logger.exception(f"Failed to import {file_path}: {e}")
                 all_errors.append(f"Failed to import {file_path}: {str(e)}")
                 total_failed += 1

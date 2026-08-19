@@ -66,7 +66,7 @@ class GenericImporter(BaseImporter):
                 # Try to parse as text by default
                 return self._import_text_format(file_path)
 
-        except Exception as e:  # noqa: BLE001 - top-level import boundary: report failure via ImportResult instead of crashing the batch run
+        except Exception as e:  # noqa: BLE001  # top-level import boundary: report failure via ImportResult instead of crashing the batch run
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -126,7 +126,7 @@ class GenericImporter(BaseImporter):
 
             return self._save_conversations(conversations, file_path, "generic_text")
 
-        except Exception as e:  # noqa: BLE001 - best-effort text parse: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # best-effort text parse: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -186,7 +186,7 @@ class GenericImporter(BaseImporter):
 
             return self._save_conversations(conversations, file_path, "generic_csv")
 
-        except Exception as e:  # noqa: BLE001 - best-effort CSV parse: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # best-effort CSV parse: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -208,7 +208,7 @@ class GenericImporter(BaseImporter):
 
             return self._save_conversations(conversations, file_path, "generic_xml")
 
-        except Exception as e:  # noqa: BLE001 - best-effort XML parse: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # best-effort XML parse: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -244,14 +244,14 @@ class GenericImporter(BaseImporter):
                 try:
                     conv = self.parse_conversation(item)
                     conversations.append(conv)
-                except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+                except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
                     self.logger.warning(f"Failed to parse conversation item: {e}")
         else:
             # Array of messages or other data - combine into single conversation
             try:
                 combined_conv = self._parse_list_as_conversation(data)
                 conversations.append(combined_conv)
-            except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+            except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
                 self.logger.warning(f"Failed to combine array into conversation: {e}")
 
         return conversations
@@ -276,7 +276,7 @@ class GenericImporter(BaseImporter):
         try:
             conv = self.parse_conversation(data)
             return [conv]
-        except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+        except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
             self.logger.warning("Failed to parse conversation object: %s", e)
             return []
 
@@ -306,7 +306,7 @@ class GenericImporter(BaseImporter):
             try:
                 conv = self.parse_conversation(item)
                 conversations.append(conv)
-            except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+            except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
                 self.logger.warning("Failed to parse nested conversation: %s", e)
 
         return conversations
@@ -316,7 +316,7 @@ class GenericImporter(BaseImporter):
         try:
             conv = self._parse_dict_as_conversation(data)
             return [conv]
-        except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+        except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
             self.logger.warning("Failed to parse object as conversation: %s", e)
             return []
 
@@ -401,7 +401,7 @@ class GenericImporter(BaseImporter):
                 try:
                     conv = self._parse_xml_element_as_conversation(elem)
                     conversations.append(conv)
-                except Exception as e:  # noqa: BLE001 - resilience: skip unparseable item, keep processing the rest of the batch
+                except Exception as e:  # noqa: BLE001  # resilience: skip unparseable item, keep processing the rest of the batch
                     self.logger.warning("Failed to parse XML conversation: %s", e)
 
         # If no conversations found, parse entire XML as single conversation
@@ -839,7 +839,7 @@ class GenericImporter(BaseImporter):
                         f"Invalid conversation format for ID: {conv.get('id', 'unknown')}"
                     )
 
-            except Exception as e:  # noqa: BLE001 - resilience: skip unsaveable conversation, keep processing the rest of the batch
+            except Exception as e:  # noqa: BLE001  # resilience: skip unsaveable conversation, keep processing the rest of the batch
                 failed_count += 1
                 conv_id = conv.get("id", "unknown")
                 error_msg = f"Failed to save conversation {conv_id}: {str(e)}"

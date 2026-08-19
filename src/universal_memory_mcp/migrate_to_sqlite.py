@@ -99,7 +99,7 @@ class ConversationMigrator:
             self.logger.info(f"Migration completed: {stats}")
             return stats
 
-        except Exception as e:  # noqa: BLE001 - top-level migration boundary: report failure in stats rather than crash the migration run
+        except Exception as e:  # noqa: BLE001  # top-level migration boundary: report failure in stats rather than crash the migration run
             self.logger.exception(f"Migration failed: {e}")
             stats["error"] = str(e)
             return stats
@@ -163,7 +163,7 @@ class ConversationMigrator:
 
             return success
 
-        except Exception as e:  # noqa: BLE001 - resilience: skip unmigratable conversation, keep processing the rest of the batch
+        except Exception as e:  # noqa: BLE001  # resilience: skip unmigratable conversation, keep processing the rest of the batch
             self.logger.exception(
                 f"Error migrating conversation {conv_info.get('id', 'unknown')}: {e}"
             )
@@ -196,7 +196,7 @@ class ConversationMigrator:
 
             return success
 
-        except Exception as e:  # noqa: BLE001 - resilience: skip unmigratable file, keep processing the rest of the batch
+        except Exception as e:  # noqa: BLE001  # resilience: skip unmigratable file, keep processing the rest of the batch
             self.logger.exception(f"Error migrating file {file_path}: {e}")
             return False
 
@@ -258,7 +258,7 @@ class ConversationMigrator:
             self.logger.info(f"Verification results: {verification}")
             return verification
 
-        except Exception as e:  # noqa: BLE001 - top-level verification boundary: report failure rather than crash
+        except Exception as e:  # noqa: BLE001  # top-level verification boundary: report failure rather than crash
             self.logger.exception(f"Verification failed: {e}")
             return {"error": str(e)}
 

@@ -69,7 +69,7 @@ class ClaudeImporter(BaseImporter):
                     metadata={},
                 )
 
-        except Exception as e:  # noqa: BLE001 - top-level import boundary: report failure via ImportResult instead of crashing the batch run
+        except Exception as e:  # noqa: BLE001  # top-level import boundary: report failure via ImportResult instead of crashing the batch run
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -138,7 +138,7 @@ class ClaudeImporter(BaseImporter):
                     metadata={},
                 )
 
-        except Exception as e:  # noqa: BLE001 - best-effort text parse: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # best-effort text parse: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -177,7 +177,7 @@ class ClaudeImporter(BaseImporter):
                     metadata={},
                 )
 
-        except Exception as e:  # noqa: BLE001 - top-level format-branch boundary: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # top-level format-branch boundary: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -217,7 +217,7 @@ class ClaudeImporter(BaseImporter):
                     metadata={},
                 )
 
-        except Exception as e:  # noqa: BLE001 - top-level format-branch boundary: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # top-level format-branch boundary: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,
@@ -257,7 +257,7 @@ class ClaudeImporter(BaseImporter):
                     metadata={},
                 )
 
-        except Exception as e:  # noqa: BLE001 - top-level format-branch boundary: report failure via ImportResult instead of crashing
+        except Exception as e:  # noqa: BLE001  # top-level format-branch boundary: report failure via ImportResult instead of crashing
             return ImportResult(
                 success=False,
                 conversations_imported=0,

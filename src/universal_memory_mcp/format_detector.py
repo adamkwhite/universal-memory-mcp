@@ -65,7 +65,7 @@ class FormatDetector:
                     PlatformType.UNKNOWN, 0.0, f"Unsupported extension: {extension}"
                 )
 
-        except Exception as e:  # noqa: BLE001 - best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
+        except Exception as e:  # noqa: BLE001  # best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
             self.logger.exception(f"Error detecting format for {file_path}: {e}")
             return self._create_result(PlatformType.UNKNOWN, 0.0, f"Detection error: {str(e)}")
 
@@ -107,7 +107,7 @@ class FormatDetector:
 
         except json.JSONDecodeError as e:
             return self._create_result(PlatformType.UNKNOWN, 0.0, f"Invalid JSON: {str(e)}")
-        except Exception as e:  # noqa: BLE001 - best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
+        except Exception as e:  # noqa: BLE001  # best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
             return self._create_result(PlatformType.UNKNOWN, 0.0, f"JSON analysis error: {str(e)}")
 
     def _detect_text_format(self, file_path: Path) -> dict[str, Any]:
@@ -132,7 +132,7 @@ class FormatDetector:
 
             return self._create_result(PlatformType.UNKNOWN, 0.0, "Unknown text format")
 
-        except Exception as e:  # noqa: BLE001 - best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
+        except Exception as e:  # noqa: BLE001  # best-effort platform classification: report UNKNOWN/0.0 rather than crash on arbitrary file content
             return self._create_result(PlatformType.UNKNOWN, 0.0, f"Text analysis error: {str(e)}")
 
     def _is_chatgpt_format(self, data: Any) -> bool:

@@ -80,7 +80,7 @@ class ConversationMemoryServer:
                 self.search_db = SearchDatabase(str(db_path))
                 self.use_sqlite_search = True
                 self.logger.info("SQLite FTS search enabled")
-            except Exception as e:  # noqa: BLE001 - optional SQLite init: fall back to linear/JSON search rather than crash server startup
+            except Exception as e:  # noqa: BLE001  # optional SQLite init: fall back to linear/JSON search rather than crash server startup
                 self.logger.warning(f"Failed to initialize SQLite search: {e}")
                 self.use_sqlite_search = False
 
@@ -958,7 +958,7 @@ class ConversationMemoryServer:
         if self.use_sqlite_search and self.search_db:
             try:
                 return self.search_db.search_conversations(query, limit)
-            except Exception as e:  # noqa: BLE001 - documented fallback: SQLite search failure falls through to linear search below
+            except Exception as e:  # noqa: BLE001  # documented fallback: SQLite search failure falls through to linear search below
                 self.logger.warning(f"SQLite search failed, falling back to linear search: {e}")
                 # Fall through to linear search
 
@@ -1302,7 +1302,7 @@ class ConversationMemoryServer:
             try:
                 db_stats = self.search_db.get_conversation_stats()
                 stats.update(db_stats)
-            except Exception as e:  # noqa: BLE001 - read-only diagnostics endpoint: report sqlite_error rather than crash the stats call
+            except Exception as e:  # noqa: BLE001  # read-only diagnostics endpoint: report sqlite_error rather than crash the stats call
                 stats["sqlite_error"] = str(e)
 
         # Walks the store, so it is meaningfully more expensive than the rest
@@ -1310,7 +1310,7 @@ class ConversationMemoryServer:
         # a user asking after the store's health, not on the init path.
         try:
             stats["consistency"] = self.check_consistency()
-        except Exception as e:  # noqa: BLE001 - read-only diagnostics endpoint: a failed consistency scan must not take down the stats call
+        except Exception as e:  # noqa: BLE001  # read-only diagnostics endpoint: a failed consistency scan must not take down the stats call
             stats["consistency_error"] = str(e)
 
         return stats
@@ -1336,7 +1336,7 @@ class ConversationMemoryServer:
 
         except ImportError:
             return {"error": "Migration module not available"}
-        except Exception as e:  # noqa: BLE001 - MCP tool handler: report migration failure rather than crash the server
+        except Exception as e:  # noqa: BLE001  # MCP tool handler: report migration failure rather than crash the server
             return {"error": f"Migration failed: {str(e)}"}
 
     async def search_by_topic(self, topic: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -1344,7 +1344,7 @@ class ConversationMemoryServer:
         if self.use_sqlite_search and self.search_db:
             try:
                 return self.search_db.search_by_topic(topic, limit)
-            except Exception as e:  # noqa: BLE001 - documented fallback: SQLite topic search failure falls through to JSON topic search
+            except Exception as e:  # noqa: BLE001  # documented fallback: SQLite topic search failure falls through to JSON topic search
                 self.logger.warning(f"SQLite topic search failed: {e}")
 
         # Fallback to JSON-based topic search
@@ -1360,7 +1360,7 @@ class ConversationMemoryServer:
         if self.use_sqlite_search and self.search_db:
             try:
                 return self.search_db.search_by_tag(tag, limit)
-            except Exception as e:  # noqa: BLE001 - MCP tool handler: report tag-search failure rather than crash the server (no JSON fallback exists)
+            except Exception as e:  # noqa: BLE001  # MCP tool handler: report tag-search failure rather than crash the server (no JSON fallback exists)
                 self.logger.warning("SQLite tag search failed: %s", e)
                 return [{"error": f"Tag search failed: {e}"}]
 
@@ -1371,7 +1371,7 @@ class ConversationMemoryServer:
         if self.use_sqlite_search and self.search_db:
             try:
                 return self.search_db.search_by_session_id(session_id, limit)
-            except Exception as e:  # noqa: BLE001 - MCP tool handler: report session-search failure rather than crash the server (no JSON fallback exists)
+            except Exception as e:  # noqa: BLE001  # MCP tool handler: report session-search failure rather than crash the server (no JSON fallback exists)
                 self.logger.warning("SQLite session search failed: %s", e)
                 return [{"error": f"Session search failed: {e}"}]
 
@@ -1384,7 +1384,7 @@ class ConversationMemoryServer:
         if self.use_sqlite_search and self.search_db:
             try:
                 return self.search_db.search_by_conversation_type(conversation_type, limit)
-            except Exception as e:  # noqa: BLE001 - MCP tool handler: report conversation-type-search failure rather than crash the server (no JSON fallback exists)
+            except Exception as e:  # noqa: BLE001  # MCP tool handler: report conversation-type-search failure rather than crash the server (no JSON fallback exists)
                 self.logger.warning("SQLite conversation-type search failed: %s", e)
                 return [{"error": f"Conversation-type search failed: {e}"}]
 
@@ -1435,6 +1435,6 @@ class ConversationMemoryServer:
                     results.append({"error": "Conversation file not found"})
                     continue
                 results.append({"title": conv.get("title", "Unknown")})
-            except Exception as e:  # noqa: BLE001 - legacy per-item analysis helper: report error per conversation rather than abort the whole batch
+            except Exception as e:  # noqa: BLE001  # legacy per-item analysis helper: report error per conversation rather than abort the whole batch
                 results.append({"error": str(e)})
         return results

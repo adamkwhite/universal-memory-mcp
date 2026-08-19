@@ -94,7 +94,7 @@ class CursorImporter(BaseImporter):
                         metadata={},
                     )
 
-            except Exception as e:  # noqa: BLE001 - per-session boundary: report failure via ImportResult instead of crashing the batch run
+            except Exception as e:  # noqa: BLE001  # per-session boundary: report failure via ImportResult instead of crashing the batch run
                 error_msg = f"Failed to process Cursor session: {str(e)}"
                 self.logger.exception(error_msg)
                 return ImportResult(
@@ -115,7 +115,7 @@ class CursorImporter(BaseImporter):
                 imported_ids=[],
                 metadata={},
             )
-        except Exception as e:  # noqa: BLE001 - top-level import boundary: report failure via ImportResult instead of crashing the batch run
+        except Exception as e:  # noqa: BLE001  # top-level import boundary: report failure via ImportResult instead of crashing the batch run
             return ImportResult(
                 success=False,
                 conversations_imported=0,

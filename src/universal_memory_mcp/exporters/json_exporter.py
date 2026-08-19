@@ -55,7 +55,7 @@ class JsonExporter(BaseExporter):
         output_path = Path(output_path)
         try:
             conversations = self.load_conversations()
-        except Exception as exc:  # noqa: BLE001 - defensive boundary
+        except Exception as exc:  # noqa: BLE001  # defensive boundary
             return ExportResult(
                 success=False,
                 conversations_exported=0,
