@@ -4,13 +4,8 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
-# Plain absolute import, matching server_fastmcp.py/conversation_memory.py:
-# ``src/`` is always a direct sys.path entry, and server_fastmcp.py imports
-# this module bare (``from validators import ...``), so a relative import
-# here raises "attempted relative import with no known parent package" the
-# moment the server runs as a script.
 from .exceptions import (
     ContentValidationError,
     DateValidationError,
@@ -231,7 +226,7 @@ def validate_limit(limit: int) -> int:
     return limit
 
 
-def validate_storage_path(storage_path: Union[str, "Path", None]) -> str:
+def validate_storage_path(storage_path: str | Path | None) -> str:
     """Validate a ``storage_path`` before it is used to create directories.
 
     This is the shared choke point for ``ConversationMemoryServer.__init__``
@@ -306,7 +301,7 @@ def validate_storage_path(storage_path: Union[str, "Path", None]) -> str:
     return text
 
 
-def validate_import_file_path(file_path: Union[str, "Path", None]) -> Path:
+def validate_import_file_path(file_path: str | Path | None) -> Path:
     """Validate a file path immediately before it is opened for import
     parsing or format detection.
 

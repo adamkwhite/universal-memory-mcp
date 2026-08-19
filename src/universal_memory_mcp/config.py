@@ -35,7 +35,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -351,7 +351,11 @@ def _apply_profile(cfg: Config, profile_name: str) -> Config:
             f"Unknown platform_profile {profile_name!r}; must be one of {sorted(PLATFORM_PROFILES)}"
         )
     profile_defaults = PLATFORM_PROFILES[profile_name]
-    return replace(cfg, platform_profile=profile_name, **profile_defaults)
+    # `dataclasses.replace` is declared as returning a generic dataclass
+    # instance rather than the type it was handed, so the concrete type has to
+    # be restated here. mypy already infers `Config`; the cast is for readers
+    # and for static analysis that follows the stub literally.
+    return cast(Config, replace(cfg, platform_profile=profile_name, **profile_defaults))
 
 
 _BOOL_FIELDS = {"enable_sqlite", "console_output"}
@@ -384,4 +388,5 @@ def _apply_overrides(cfg: Config, overrides: Mapping[str, Any], source: str) -> 
                 raise ConfigError(f"Invalid JSON for log_sample_rates in {source}: {exc}") from exc
         else:
             coerced[key] = value
-    return replace(cfg, **coerced)
+    # See `_apply_profile` for why this is cast.
+    return cast(Config, replace(cfg, **coerced))

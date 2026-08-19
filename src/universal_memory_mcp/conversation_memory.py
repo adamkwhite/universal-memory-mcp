@@ -16,11 +16,9 @@ from typing import Any
 
 import aiofiles
 
-# Plain absolute import: ``src/`` is always a direct sys.path entry (see
-# server_fastmcp.py for the full explanation), so no relative-import
-# fallback is needed. ImportError is still caught here because it's a
-# genuine possible failure -- SearchDatabase needs stdlib ``sqlite3``,
-# which some minimal Python builds omit -- not a dual-style redefinition.
+# ImportError is caught because it is a genuine possible failure, not an
+# import-style fallback: SearchDatabase needs stdlib ``sqlite3``, which some
+# minimal Python builds omit. Search falls back to a linear scan without it.
 try:
     from .search_database import SearchDatabase
 
@@ -28,9 +26,6 @@ try:
 except ImportError:
     SQLITE_AVAILABLE = False
 
-# Plain absolute import, matching the ``search_database`` import above and
-# validators.py's own header comment: ``src/`` is always a direct sys.path
-# entry, so no relative-import fallback is needed here.
 from .validators import validate_storage_path
 
 
