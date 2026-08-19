@@ -14,6 +14,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, ClassVar
 
+# Used by the FTS integrity check and by both count-reporting methods. Named
+# so the three of them cannot drift apart -- the #190 bug class turns on
+# `conversations` and `conversations_fts_docsize` being counted the same way.
+COUNT_CONVERSATIONS_SQL = "SELECT COUNT(*) FROM conversations"
+
 
 class SearchDatabase:
     """SQLite FTS5-based search database for conversations."""
@@ -224,7 +229,7 @@ class SearchDatabase:
         run at init; the rebuild only fires when they actually disagree.
         """
         try:
-            rows = conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0]
+            rows = conn.execute(COUNT_CONVERSATIONS_SQL).fetchone()[0]
             docs = conn.execute("SELECT COUNT(*) FROM conversations_fts_docsize").fetchone()[0]
         except sqlite3.Error:
             # ``columnsize=0`` builds have no docsize shadow table. Nothing to
@@ -537,7 +542,7 @@ class SearchDatabase:
         """Get database statistics."""
         try:
             with self._connect() as conn:
-                cursor = conn.execute("SELECT COUNT(*) FROM conversations")
+                cursor = conn.execute(COUNT_CONVERSATIONS_SQL)
                 total_conversations = cursor.fetchone()[0]
 
                 cursor = conn.execute("SELECT COUNT(DISTINCT topic) FROM conversation_topics")
@@ -625,7 +630,7 @@ class SearchDatabase:
         """Get total conversation count."""
         try:
             with self._connect() as conn:
-                cursor = conn.execute("SELECT COUNT(*) FROM conversations")
+                cursor = conn.execute(COUNT_CONVERSATIONS_SQL)
                 return cursor.fetchone()[0]
 
         except sqlite3.Error as e:
