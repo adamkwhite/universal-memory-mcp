@@ -52,32 +52,29 @@ Install from source instead if you intend to modify it — the steps below do th
 
 #### Option 1: Install with Claude Code (Recommended)
 
-**Quick Install** - Copy and paste this into Claude Code:
+**Quick Install** - install the package, then point Claude Code at its console script:
 
 ```bash
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
+pip install universal-memory-mcp   # or: uv tool install universal-memory-mcp
+claude mcp add --transport stdio universal-memory-mcp -- universal-memory-mcp
 ```
 
-**Important**: Replace `$HOME/Code/universal-memory-mcp` with the actual path where you cloned this repository.
-
-**Examples for different locations:**
+**Installed from source instead?** The package uses relative imports, so the server cannot be
+launched as a loose file — `python3 src/universal_memory_mcp/server_fastmcp.py` fails with
+`attempted relative import with no known parent package`. Run it as a module, using the
+interpreter from the virtualenv you installed into:
 
 ```bash
-# If cloned to ~/Code/universal-memory-mcp (default)
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/Code/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
-
-# If cloned to ~/projects/universal-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/projects/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
-
-# If cloned to ~/dev/universal-memory-mcp
-claude mcp add --transport stdio claude-memory -- sh -c "cd $HOME/dev/universal-memory-mcp && python3 src/universal_memory_mcp/server_fastmcp.py"
+# Replace the path with wherever you cloned the repository
+claude mcp add --transport stdio universal-memory-mcp -- \
+  $HOME/Code/universal-memory-mcp/.venv/bin/python3 -m universal_memory_mcp.server_fastmcp
 ```
 
 **What this does:**
 - `--transport stdio`: Uses standard input/output for local processes
-- `claude-memory`: Server identifier name
+- `universal-memory-mcp`: Server identifier name — yours to choose, but it sets the tool
+  namespace your client exposes (`mcp__universal-memory-mcp__*`)
 - `--`: Separates Claude CLI flags from the server command
-- `sh -c "cd ... && python3 ..."`: Changes to project directory before running server
 
 This adds the MCP server to your Claude Desktop configuration automatically.
 
@@ -115,11 +112,11 @@ Documentation: https://code.claude.com/docs/en/mcp
 
 #### MCP Server Mode
 ```bash
-# Run as MCP server (from project root)
-python3 src/universal_memory_mcp/server_fastmcp.py
+# Installed from PyPI — console script on PATH
+universal-memory-mcp
 
-# Or from src directory
-cd src && python3 server_fastmcp.py
+# Installed from source — run as a module (a loose-file run cannot work; see above)
+python3 -m universal_memory_mcp.server_fastmcp
 ```
 
 #### Bulk Import
@@ -191,19 +188,31 @@ Add to your Claude Desktop MCP config:
 {
   "mcpServers": {
     "universal-memory-mcp": {
-      "command": "python",
-      "args": ["/absolute/path/to/universal-memory-mcp/src/universal_memory_mcp/server_fastmcp.py"],
-      "cwd": "/absolute/path/to/universal-memory-mcp"
+      "command": "universal-memory-mcp"
     }
   }
 }
 ```
 
-> **Upgrading from before the package move (#225):** the server script moved from
-> `src/universal_memory_mcp/server_fastmcp.py` to `src/universal_memory_mcp/server_fastmcp.py`. Update the
-> `args` path in your config, or the server will fail to start with `No such file or
-> directory`. `python -m universal_memory_mcp.server_fastmcp` also works if the package
-> is installed.
+Installed from source rather than PyPI? Point `command` at your virtualenv's interpreter and
+run the module:
+
+```json
+{
+  "mcpServers": {
+    "universal-memory-mcp": {
+      "command": "/absolute/path/to/universal-memory-mcp/.venv/bin/python3",
+      "args": ["-m", "universal_memory_mcp.server_fastmcp"]
+    }
+  }
+}
+```
+
+> **Upgrading from before the package move (#225):** configs used to name the server script
+> directly (`src/server_fastmcp.py`). That no longer works in any form — the modules moved
+> under `src/universal_memory_mcp/`, and the package now uses relative imports, so running
+> the file raises `attempted relative import with no known parent package`. Switch to the
+> console script or the `-m` form above.
 
 ### Configuration Precedence
 
