@@ -10,11 +10,11 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-# Plain absolute imports: ``src/`` is always a direct sys.path entry (the
-# editable install's .pth, ``PYTHONPATH=.`` in tests, or the script's own
-# directory when run as ``python3 src/server_fastmcp.py``). No package
-# context is required, so there's no relative-import fallback to maintain --
-# that dual try/except used to generate every no-redef mypy error here.
+# Relative imports, so this module only resolves with its package context.
+# That is why the server cannot be started as a loose file: ``python3
+# src/universal_memory_mcp/server_fastmcp.py`` raises "attempted relative
+# import with no known parent package". Use the ``universal-memory-mcp``
+# console script or ``python -m universal_memory_mcp.server_fastmcp``.
 from .config import Config
 from .conversation_memory import ConversationMemoryServer as CoreMemoryServer
 from .exceptions import ValidationError
