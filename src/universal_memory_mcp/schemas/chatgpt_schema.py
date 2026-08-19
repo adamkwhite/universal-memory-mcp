@@ -318,7 +318,7 @@ def validate_chatgpt_export(data: Any) -> dict[str, Any]:
             "warnings": [],
             "conversation_count": 0,
         }
-    except Exception as e:  # noqa: BLE001 - schema-validation boundary: return a structured {valid: False} result rather than crash the caller
+    except Exception as e:  # noqa: BLE001  # schema-validation boundary: return a structured {valid: False} result rather than crash the caller
         return {
             "valid": False,
             "errors": [f"Validation error: {str(e)}"],
@@ -394,7 +394,7 @@ if __name__ == "__main__":
                 stats = get_chatgpt_conversation_stats(data[0])
                 print(f"\nFirst Conversation Stats: {json.dumps(stats, indent=2)}")
 
-        except Exception as e:  # noqa: BLE001 - CLI demo entry point: print and exit rather than an unhandled traceback
+        except Exception as e:  # noqa: BLE001  # CLI demo entry point: print and exit rather than an unhandled traceback
             print(f"Error: {e}")
     else:
         print("Usage: python chatgpt_schema.py <chatgpt_export.json>")

@@ -71,7 +71,7 @@ class ChatgptExporter(BaseExporter):
         output_path = Path(output_path)
         try:
             conversations = self.load_conversations()
-        except Exception as exc:  # noqa: BLE001 - defensive boundary
+        except Exception as exc:  # noqa: BLE001  # defensive boundary
             return ExportResult(
                 success=False,
                 conversations_exported=0,
@@ -89,7 +89,7 @@ class ChatgptExporter(BaseExporter):
         for conv in filtered:
             try:
                 chatgpt_array.append(self._to_chatgpt(conv))
-            except Exception as exc:  # noqa: BLE001 - per-conv resilience
+            except Exception as exc:  # noqa: BLE001  # per-conv resilience
                 failed += 1
                 errors.append(f"Failed to convert {conv.get('id', '<unknown>')}: {exc}")
 

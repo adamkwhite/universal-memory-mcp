@@ -63,3 +63,46 @@ def test_import_file_reports_failure_on_real_non_dict_json_content(importer, tem
     assert result.success is False
     assert result.conversations_failed == 1
     assert result.errors  # some failure message was recorded, not silently dropped
+
+
+def test_text_format_reports_failure_when_path_is_a_directory(importer, temp_dir):
+    """``_import_text_format`` opens the path before parsing, so a directory
+    makes the builtin ``open`` raise a real IsADirectoryError -- must be
+    reported via ImportResult(success=False), not propagate."""
+    result = importer._import_text_format(Path(temp_dir))
+
+    assert result.success is False
+    assert result.conversations_failed == 1
+    assert any("Text import failed" in e for e in result.errors)
+
+
+def test_claude_memory_format_reports_failure_on_non_mapping_data(importer, temp_dir):
+    """``_validate_conversation`` tests ``field not in conversation``. A
+    non-container reaching this branch makes that ``in`` raise a real
+    TypeError -- must be reported via ImportResult(success=False)."""
+    result = importer._import_claude_memory_format(Path(temp_dir) / "x.json", 42)
+
+    assert result.success is False
+    assert result.conversations_failed == 1
+    assert any("Claude Memory import failed" in e for e in result.errors)
+
+
+def test_desktop_format_reports_failure_on_unsupported_data_type(importer, temp_dir):
+    """``parse_conversation`` raises TypeError by design for data that is
+    neither a string nor a dictionary. The branch boundary must turn that
+    into ImportResult(success=False) rather than let it escape."""
+    result = importer._import_claude_desktop_format(Path(temp_dir) / "x.json", ["not", "a", "dict"])
+
+    assert result.success is False
+    assert result.conversations_failed == 1
+    assert any("Claude Desktop import failed" in e for e in result.errors)
+
+
+def test_generic_json_format_reports_failure_on_unsupported_data_type(importer, temp_dir):
+    """Same deliberate TypeError from ``parse_conversation``, reported
+    through the generic-JSON branch boundary."""
+    result = importer._import_generic_claude_json(Path(temp_dir) / "x.json", ["not", "a", "dict"])
+
+    assert result.success is False
+    assert result.conversations_failed == 1
+    assert any("Generic Claude import failed" in e for e in result.errors)
