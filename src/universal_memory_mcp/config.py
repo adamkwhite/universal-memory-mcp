@@ -351,7 +351,10 @@ def _apply_profile(cfg: Config, profile_name: str) -> Config:
             f"Unknown platform_profile {profile_name!r}; must be one of {sorted(PLATFORM_PROFILES)}"
         )
     profile_defaults = PLATFORM_PROFILES[profile_name]
-    return replace(cfg, platform_profile=profile_name, **profile_defaults)
+    # Annotated because `dataclasses.replace` is declared as returning a generic
+    # dataclass instance, which loses `Config` for callers and for analysis.
+    applied: Config = replace(cfg, platform_profile=profile_name, **profile_defaults)
+    return applied
 
 
 _BOOL_FIELDS = {"enable_sqlite", "console_output"}
@@ -384,4 +387,5 @@ def _apply_overrides(cfg: Config, overrides: Mapping[str, Any], source: str) -> 
                 raise ConfigError(f"Invalid JSON for log_sample_rates in {source}: {exc}") from exc
         else:
             coerced[key] = value
-    return replace(cfg, **coerced)
+    overridden: Config = replace(cfg, **coerced)
+    return overridden
