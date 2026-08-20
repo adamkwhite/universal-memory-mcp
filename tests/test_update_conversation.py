@@ -254,3 +254,104 @@ async def test_updated_at_set(server):
     await server.update_conversation(conv_id, title="x")
     data = _load(file_path)
     assert "updated_at" in data
+
+
+# ---------------------------------------------------------------------------
+# The no-op guard. Extracted to _is_noop_update to bring update_conversation
+# under the cognitive-complexity limit; it had no direct coverage before, and
+# its second clause is the least obvious rule in the function.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_with_nothing_at_all_is_rejected(server):
+    conv_id, _ = await _seed(server)
+    result = await server.update_conversation(conv_id)
+    assert result["status"] == "error"
+    assert result["message"] == "No changes provided"
+
+
+@pytest.mark.asyncio
+async def test_note_only_update_is_allowed_when_auditing(server):
+    """A change_note with no field changes is a real update: the audit line it
+    writes into content *is* the change. This is the point of change_note."""
+    conv_id, file_path = await _seed(server)
+    before = _load(file_path)["content"]
+
+    result = await server.update_conversation(conv_id, change_note="reviewed, no edits")
+
+    assert result["status"] == "success"
+    assert result["changes"] == []
+    assert "note-only" in result["message"]
+    after = _load(file_path)["content"]
+    assert after != before
+    assert "reviewed, no edits" in after
+    assert result["audit_line"] in after
+
+
+@pytest.mark.asyncio
+async def test_note_only_update_is_rejected_when_not_auditing(server):
+    """Same call with auditing off writes nothing, so it must be rejected
+    rather than silently bumping updated_at."""
+    conv_id, file_path = await _seed(server)
+    before = _load(file_path)
+
+    result = await server.update_conversation(
+        conv_id, change_note="reviewed, no edits", record_audit=False
+    )
+
+    assert result["status"] == "error"
+    assert result["message"] == "No changes provided"
+    assert _load(file_path) == before, "a rejected update must not touch the file"
+
+
+@pytest.mark.asyncio
+async def test_real_change_still_applies_with_auditing_off(server):
+    """record_audit=False suppresses the audit line, not the update itself."""
+    conv_id, file_path = await _seed(server)
+    result = await server.update_conversation(conv_id, title="New Title", record_audit=False)
+
+    assert result["status"] == "success"
+    assert "audit_line" not in result
+    data = _load(file_path)
+    assert data["title"] == "New Title"
+    assert not data["content"].startswith("[update ")
+
+
+class TestNoopPredicate:
+    """Direct tests for the extracted predicate, so a regression names itself."""
+
+    @pytest.mark.parametrize(
+        "changes,note,audit,expected",
+        [
+            ([], None, True, True),  # nothing at all
+            ([], None, False, True),  # nothing, auditing off
+            ([], "note", False, True),  # note but nothing records it
+            ([], "note", True, False),  # the audit line IS the change
+            (["title"], None, True, False),  # a real field change
+            (["title"], None, False, False),  # real change, auditing off
+        ],
+    )
+    def test_truth_table(self, changes, note, audit, expected):
+        assert ConversationMemoryServer._is_noop_update(changes, note, audit) is expected
+
+
+class TestConflictingTagOps:
+    @pytest.mark.parametrize(
+        "set_tags,add_tags,remove_tags,expected",
+        [
+            (None, ["a"], None, False),
+            (None, None, ["a"], False),
+            (["a"], None, None, False),
+            (["a"], ["b"], None, True),
+            (["a"], None, ["b"], True),
+            ([], ["b"], None, True),  # set_tags=[] is "clear", not "unset"
+            ([], None, None, False),  # clearing alone is fine
+            (["a"], [], [], False),  # empty mutations are not a conflict
+        ],
+    )
+    def test_truth_table(self, set_tags, add_tags, remove_tags, expected):
+        assert (
+            ConversationMemoryServer._conflicting_tag_ops(set_tags, add_tags, remove_tags)
+            is expected
+        )
