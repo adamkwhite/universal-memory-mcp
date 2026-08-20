@@ -178,3 +178,43 @@ async def test_search_by_conversation_type_reports_error_on_real_sqlite_failure(
     assert any("SQLite conversation-type search failed" in r.message for r in caplog.records)
     assert results == [{"error": results[0]["error"]}]
     assert "Conversation-type search failed" in results[0]["error"]
+
+
+def test_sqlite_only_search_methods_stay_coroutine_functions():
+    """The SQLite-only search methods must keep `async`, even though they
+    never await.
+
+    SonarCloud reports python:S7503 on five of them (get_search_stats,
+    migrate_to_sqlite, search_by_tag, search_by_session_id,
+    search_by_conversation_type) because they front a synchronous
+    SearchDatabase. The rule is right about the mechanics and wrong about the
+    intent: `async` is this class's public contract, matching the siblings
+    that genuinely await aiofiles I/O.
+
+    Without this test, "fixing" the smell still fails the suite -- but as a
+    scatter of `TypeError: object dict can't be used in 'await' expression`
+    across six files, which reads as a broken test rather than a rejected
+    change. This one names the decision, so the failure points at
+    sonar-project.properties entry e2 instead of at the awaits.
+    """
+    import inspect
+
+    for name in (
+        "get_search_stats",
+        "migrate_to_sqlite",
+        "search_by_tag",
+        "search_by_session_id",
+        "search_by_conversation_type",
+        # Not S7503-flagged (it awaits _search_topic_json), but it is the
+        # reason the others stay async: it shows the shape they take once a
+        # JSON fallback exists. If this one ever stops being a coroutine the
+        # rationale for the other four is gone too.
+        "search_by_topic",
+    ):
+        method = getattr(ConversationMemoryServer, name)
+        assert inspect.iscoroutinefunction(method), (
+            f"ConversationMemoryServer.{name} must stay `async def`. It is awaited by "
+            f"@mcp.tool() handlers in server_fastmcp.py and by ~25 test call sites; "
+            f"removing `async` to satisfy SonarCloud python:S7503 breaks all of them. "
+            f"See sonar-project.properties entry e2 for the full rationale."
+        )
