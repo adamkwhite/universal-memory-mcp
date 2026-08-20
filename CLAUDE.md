@@ -18,20 +18,25 @@ sweep exists for. Prevention for enumerable facts, sweep for behavioural ones.
 
 **Claude Memory MCP** is a universal conversation memory system that provides persistent storage and intelligent search across multiple AI platforms. Originally designed for Claude, it now supports ChatGPT, Cursor AI, and custom formats through an extensible architecture.
 
-## Current Status (August 17, 2026)
+## Current Status (August 20, 2026)
 
 **Branch**: `main`
-**Recent Work**: **Published to PyPI as `universal-memory-mcp` 0.1.0** (#230, tag `v0.1.0`).
-Getting there required #225 — the wheel had been shipping without the application. Before that:
-the first outside contribution (#200, merged) exposed a fork-CI gap and a Windows portability
-gap, closed by #201–#209. See `todos.md`.
+**Recent Work**: SonarCloud debt cleared to zero (#232, via #238–#240/#244/#247) and
+`scripts/switch_mcp_config.py` added to repoint MCP configs at the published console script
+(#245/#246) — the #225 package move broke every config that launched the server as a loose file.
+Before that: **published to PyPI as `universal-memory-mcp`** (#230, tag `v0.1.0`; now 0.1.2),
+which required #225 — the wheel had been shipping without the application. See `todos.md`.
 **Test Coverage**: run `pytest -q | tail -1` for the local count and read the `Tests (Windows)` job for the CI one — both were restated here and both had already drifted. Windows carries a small number of deliberate POSIX-only skips (see the quality-gate section). Coverage: **SonarCloud is authoritative**, not a local `.coverage` file; ≥80% required on new code.
 
 > Local benchmark tests need a generated dataset: `python scripts/generate_test_data.py --conversations 500`.
 > Without it, 6 `test_performance_benchmarks.py::test_search_performance_scaling` cases fail locally with
 > "No conversation files copied". CI generates it in `performance.yml`, and `build.yml` `--ignore`s that file,
 > so this is a local-only papercut and not a regression.
-**Code Quality**: 9 code smells, 0 security hotspots (SonarCloud, verified via API); quality gate status OK
+**Code Quality**: SonarCloud is authoritative and the count moves — query it rather than
+trusting a number written here:
+`curl -s "https://sonarcloud.io/api/issues/search?componentKeys=adamkwhite_claude-memory-mcp&resolved=false" | python3 -c "import json,sys; print(json.load(sys.stdin)['total'])"`.
+It was **0 open issues, gate OK** on 2026-08-20, when #247 closed the last one. This line
+previously restated "9 code smells" and had drifted — see the no-restated-enumerations rule above.
 **Architecture**: Importer/Exporter mirror pattern (`src/universal_memory_mcp/importers/` ↔ `src/universal_memory_mcp/exporters/`); `src/universal_memory_mcp/config.py` is the single source of configuration truth (env > file > profile > default)
 
 ### Naming: the project was renamed, the runtime identifiers were not (#197)
@@ -66,6 +71,28 @@ switch to the console script now that the package is on PyPI:
 package uses relative imports, so `python .../server_fastmcp.py` raises "attempted relative
 import with no known parent package". Use the console script or
 `python -m universal_memory_mcp.server_fastmcp`.
+
+`scripts/switch_mcp_config.py` does that rewrite (#245, #246). It handles **both** client config
+formats — Claude Code's `~/.claude.json`, walking the global block and every per-project block,
+and Codex's `~/.codex/config.toml` — dry-run by default, `--apply` writes after a timestamped
+backup. Two behaviours that are deliberate rather than incidental:
+
+- **It renames the Claude Code key to `universal-memory-mcp`, and does not rename the Codex
+  table.** The key sets the tool namespace a client exposes (`mcp__<key>__*`), and four global
+  slash-commands hardcode `mcp__universal-memory-mcp__*`, so the Claude side has to be uniform
+  across machines. Codex has no such dependency, and a Codex server table owns child tables
+  (`.env`, `.tools.*`) that would all have to be renamed with it — several chances to silently
+  orphan config in exchange for cosmetics.
+- **The TOML path rewrites lines rather than parse-and-dump**, because `tomllib` is read-only and
+  a round-trip would discard the comments and ordering of a hand-maintained file.
+
+**Codex is a confirmed client**, not just a theoretical one: verified 2026-08-20 on a work
+machine, all 10 live MCP tools served through the published console script.
+
+**Consequence worth remembering: a config pointing at the console script is pinned to the
+*published* version.** Repo changes do not reach it until a release plus
+`uv tool upgrade universal-memory-mcp`. When a fix appears not to take effect in an MCP tool,
+check this before debugging the code.
 
 ### Publishing (#226, #229, #230)
 
