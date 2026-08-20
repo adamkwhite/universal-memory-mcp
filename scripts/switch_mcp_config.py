@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -118,9 +119,127 @@ def backup_path(path: Path, now: datetime.datetime) -> Path:
     return path.with_name(f"{path.name}.bak-{now:%Y%m%d-%H%M%S}")
 
 
+# --------------------------------------------------------------------------
+# Codex CLI (~/.codex/config.toml)
+#
+# Same server, different host. Two things differ from the JSON side:
+#
+# 1. The table name is NOT renamed. In Claude Code the key sets the tool
+#    namespace that hand-written skills refer to, so it has to be uniform. Codex
+#    has no such dependency here, and a Codex server table owns child tables
+#    (``.env``, ``.tools.*``) that would all have to be renamed with it -- five
+#    renames, each a chance to silently drop config, for no gain. Only the
+#    command is actually broken, so only the command is touched.
+#
+# 2. Rewriting is line-based rather than parse-and-dump. tomllib is read-only,
+#    and even with a writer, round-tripping would discard comments and ordering
+#    in a file the user maintains by hand.
+# --------------------------------------------------------------------------
+
+TABLE_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
+SERVER_TABLE_RE = re.compile(r"^mcp_servers\.([^.]+)$")
+
+
+def _toml_table_name(line: str) -> str | None:
+    match = TABLE_RE.match(line)
+    return match.group(1).strip() if match else None
+
+
+def _is_our_toml_server(name: str, body: list[str]) -> bool:
+    """Decide from a server table's own lines whether it is our server.
+
+    ``name`` is the bare table name (``claude-memory``), ``body`` the lines
+    belonging to that table and no child table.
+    """
+    if name.strip('"') in KNOWN_KEYS:
+        return True
+    return any(marker in line for line in body for marker in SOURCE_MARKERS)
+
+
+def rewrite_toml_lines(lines: list[str]) -> tuple[list[str], list[str]]:
+    """Repoint any of our server tables at the console script.
+
+    Returns ``(new_lines, changes)``. Only ``command`` and ``args`` inside a
+    matching ``[mcp_servers.<name>]`` table are touched; child tables, other
+    servers, comments, ordering and every other key are preserved byte for byte.
+    """
+    # Split into (table_name_or_None, [lines]) runs so each table is self-contained.
+    sections: list[tuple[str | None, list[str]]] = [(None, [])]
+    for line in lines:
+        name = _toml_table_name(line)
+        if name is not None:
+            sections.append((name, [line]))
+        else:
+            sections[-1][1].append(line)
+
+    changes: list[str] = []
+    out: list[str] = []
+
+    for name, body in sections:
+        server = SERVER_TABLE_RE.match(name) if name else None
+        if not server or not _is_our_toml_server(server.group(1), body):
+            out += body
+            continue
+
+        rewritten = []
+        for line in body:
+            if re.match(r"\s*command\s*=", line):
+                if line.strip() != 'command = "universal-memory-mcp"':
+                    changes.append(f"[{name}] {line.strip()}")
+                rewritten.append('command = "universal-memory-mcp"\n')
+            elif re.match(r"\s*args\s*=", line):
+                if line.strip() != "args = []":
+                    changes.append(f"[{name}] {line.strip()}")
+                rewritten.append("args = []\n")
+            else:
+                rewritten.append(line)
+        out += rewritten
+
+    return out, changes
+
+
+def process_file(path: Path, apply: bool) -> bool:
+    """Report, and optionally write, the changes for one config file.
+
+    Dispatches on suffix: ``.toml`` is a Codex config, anything else is a
+    Claude Code JSON config. Returns True if anything was (or would be) changed.
+    """
+    if not path.exists():
+        print(f"{path}: not found, skipping.")
+        return False
+
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".toml":
+        new_lines, changes = rewrite_toml_lines(text.splitlines(keepends=True))
+        new_text = "".join(new_lines)
+    else:
+        config = json.loads(text)
+        changes = rewrite_config(config)
+        new_text = json.dumps(config, indent=2) + "\n"
+
+    if not changes:
+        print(f"{path}: already correct, nothing to do.")
+        return False
+
+    print(f"{path}: {len(changes)} entr{'y' if len(changes) == 1 else 'ies'} to rewrite\n")
+    for change in changes:
+        print(f"  {change}")
+    print()
+
+    if apply:
+        backup = backup_path(path, datetime.datetime.now())
+        shutil.copy2(path, backup)
+        path.write_text(new_text, encoding="utf-8")
+        print(f"  Written. Backup: {backup}\n")
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Point Claude Code MCP entries at the universal-memory-mcp console script."
+        description=(
+            "Point MCP server entries at the universal-memory-mcp console script. "
+            "Handles Claude Code (~/.claude.json) and Codex (~/.codex/config.toml)."
+        )
     )
     parser.add_argument(
         "--apply",
@@ -130,35 +249,26 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path.home() / ".claude.json",
-        help="config file to rewrite (default: ~/.claude.json)",
+        action="append",
+        dest="configs",
+        help=(
+            "config file to rewrite; repeatable. "
+            "Default: ~/.claude.json and ~/.codex/config.toml, whichever exist."
+        ),
     )
     args = parser.parse_args(argv)
 
-    if not args.config.exists():
-        print(f"{args.config}: not found -- nothing to do.")
-        return 0
+    paths = args.configs or [
+        Path.home() / ".claude.json",
+        Path.home() / ".codex" / "config.toml",
+    ]
 
-    config = json.loads(args.config.read_text(encoding="utf-8"))
-    changes = rewrite_config(config)
+    changed = [process_file(p, args.apply) for p in paths]
 
-    if not changes:
-        print(f"{args.config}: already correct, nothing to do.")
-        return 0
-
-    print(f"{args.config}: {len(changes)} entr{'y' if len(changes) == 1 else 'ies'} to rewrite\n")
-    for change in changes:
-        print(f"  {change}")
-
-    if not args.apply:
-        print("\nDry run. Re-run with --apply to write.")
-        return 0
-
-    backup = backup_path(args.config, datetime.datetime.now())
-    shutil.copy2(args.config, backup)
-    args.config.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-    print(f"\nWritten. Backup: {backup}")
-    print("Now run /mcp in each open Claude Code session to reconnect.")
+    if any(changed) and args.apply:
+        print("Restart each client to reconnect: /mcp in Claude Code, or restart Codex.")
+    elif any(changed):
+        print("Dry run. Re-run with --apply to write.")
     return 0
 
 
