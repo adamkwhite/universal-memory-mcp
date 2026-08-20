@@ -23,106 +23,68 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 ### Prerequisites
 
 - Python 3.10+ (CI runs 3.14)
-- Ubuntu/WSL environment recommended
-- Claude Desktop (for MCP integration)
+- An MCP client — Claude Code, Claude Desktop, Codex, or anything else speaking MCP over stdio
 
 ### Installation
-
-
-**From PyPI (recommended):**
 
 ```bash
 uv tool install universal-memory-mcp   # or: pipx install universal-memory-mcp
 ```
 
-This is an application, not a library, so install it with a tool installer rather than `pip`.
-On Debian/Ubuntu and other PEP 668 systems a bare `pip install` into the system interpreter
-fails with `error: externally-managed-environment`; `uv tool` and `pipx` each manage their own
-virtualenv and put the script on your PATH. Inside a virtualenv you have already activated,
-`pip install universal-memory-mcp` works fine.
+Not `pip install`: this is an application, and on Debian/Ubuntu and other
+[PEP 668](https://peps.python.org/pep-0668/) systems installing one into the system interpreter
+fails with `error: externally-managed-environment`. Inside a virtualenv you have already
+activated, `pip install universal-memory-mcp` is fine.
 
-That gives you a `universal-memory-mcp` console script, which is what an MCP config should point
-at — more robust than an absolute path into a checkout:
+Then point your client at the `universal-memory-mcp` console script:
+
+```bash
+claude mcp add --transport stdio universal-memory-mcp -- universal-memory-mcp
+```
+
+Or write it into the config yourself — Claude Code and Claude Desktop:
 
 ```json
 { "mcpServers": { "universal-memory-mcp": { "command": "universal-memory-mcp" } } }
 ```
 
-> **Upgrading from 0.1.0?** The server key was `claude-memory` in earlier examples. Rename it
-> if you like — the key is yours to choose and nothing depends on it — but note that renaming
-> changes the tool namespace your client exposes (`mcp__claude-memory__*` →
-> `mcp__universal-memory-mcp__*`). Stored conversations are unaffected either way; they live
-> in `~/claude-memory/` and that path has not changed.
+Codex (`~/.codex/config.toml`):
 
-Install from source instead if you intend to modify it — the steps below do that.
-
-#### Option 1: Install with Claude Code (Recommended)
-
-**Quick Install** - install the package, then point Claude Code at its console script:
-
-```bash
-uv tool install universal-memory-mcp   # or: pipx install universal-memory-mcp
-claude mcp add --transport stdio universal-memory-mcp -- universal-memory-mcp
+```toml
+[mcp_servers.universal-memory-mcp]
+command = "universal-memory-mcp"
 ```
 
-**Installed from source instead?** The package uses relative imports, so the server cannot be
-launched as a loose file — `python3 src/universal_memory_mcp/server_fastmcp.py` fails with
-`attempted relative import with no known parent package`. Run it as a module, using the
-interpreter from the virtualenv you installed into:
+The server name is yours to choose, but it sets the tool namespace your client exposes
+(`mcp__<name>__*`). Conversations live in `~/claude-memory/` regardless, so renaming is safe.
+
+Upgrading an install that points at a checkout? `scripts/switch_mcp_config.py` rewrites both
+config formats in place — dry run by default, `--apply` to write.
+
+#### From source
 
 ```bash
-# Replace the path with wherever you cloned the repository
-claude mcp add --transport stdio universal-memory-mcp -- \
-  $HOME/Code/universal-memory-mcp/.venv/bin/python3 -m universal_memory_mcp.server_fastmcp
+git clone https://github.com/adamkwhite/universal-memory-mcp.git
+cd universal-memory-mcp
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+python3 tests/validate_system.py     # optional: verify the install
 ```
 
-**What this does:**
-- `--transport stdio`: Uses standard input/output for local processes
-- `universal-memory-mcp`: Server identifier name — yours to choose, but it sets the tool
-  namespace your client exposes (`mcp__universal-memory-mcp__*`)
-- `--`: Separates Claude CLI flags from the server command
-
-This adds the MCP server to your Claude Desktop configuration automatically.
-
-Documentation: https://code.claude.com/docs/en/mcp
-
-#### Option 2: Manual Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/adamkwhite/universal-memory-mcp.git
-   cd universal-memory-mcp
-   ```
-
-2. **Set up virtual environment:**
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -e .
-   ```
-
-   This installs the package in editable mode along with all required dependencies:
-   Dependencies are pinned in `pyproject.toml` and locked in `uv.lock` — read them there rather
-   than from a list here, which drifts on every bump.
-
-4. **Test the system:**
-   ```bash
-   python3 tests/validate_system.py
-   ```
+Point your client at `<checkout>/.venv/bin/python3 -m universal_memory_mcp.server_fastmcp`. The
+package uses relative imports, so running the file directly cannot work — `python3
+src/universal_memory_mcp/server_fastmcp.py` fails with `attempted relative import with no known
+parent package`.
 
 ### Basic Usage
 
 #### MCP Server Mode
-```bash
-# Installed from PyPI — console script on PATH
-universal-memory-mcp
 
-# Installed from source — run as a module (a loose-file run cannot work; see above)
-python3 -m universal_memory_mcp.server_fastmcp
+Your client starts the server for you; run it by hand only to debug.
+
+```bash
+universal-memory-mcp                          # installed from PyPI
+python3 -m universal_memory_mcp.server_fastmcp  # from source
 ```
 
 #### Bulk Import
