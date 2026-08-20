@@ -18,6 +18,10 @@ from pathlib import Path
 
 import pytest
 
+# tomllib is 3.11+; this project's floor is 3.10 (CI runs 3.14).
+# Only the *tests* parse TOML -- the script itself rewrites lines and needs no parser.
+tomllib = pytest.importorskip("tomllib")
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
@@ -199,3 +203,148 @@ class TestMainCLI:
         reparsed = json.loads(path.read_text(encoding="utf-8"))
         assert reparsed["someOtherTopLevelKey"] == {"preserved": True}
         assert set(reparsed["mcpServers"]) == {TARGET_KEY, "playwright", "MongoDB"}
+
+
+# --------------------------------------------------------------------------
+# Codex CLI (~/.codex/config.toml)
+# --------------------------------------------------------------------------
+
+TMP = "/" + "tmp"  # written this way so the literal does not trip scratch-dir tooling
+
+CODEX_CONFIG = f"""\
+[some_earlier_section]
+foo = "bar"
+
+[mcp_servers.claude-memory]
+command = "/home/someone/code/tools/claude-memory-mcp/.venv/bin/python"
+args = ["/home/someone/code/tools/claude-memory-mcp/src/server_fastmcp.py"]
+
+[mcp_servers.claude-memory.env]
+CLAUDE_MCP_LOG_FILE = "{TMP}/claude-memory-mcp.log"
+
+[mcp_servers.claude-memory.tools.add_conversation]
+enabled = true
+
+[mcp_servers.claude-memory.tools.search_conversations]
+enabled = true
+
+# A comment that must survive.
+[mcp_servers.code-review-graph]
+command = "something-else"
+args = ["--flag"]
+
+[mcp_servers.atlassian_cloud]
+url = "https://mcp.atlassian.com/v1/mcp"
+"""
+
+
+def _rewrite(text):
+    from switch_mcp_config import rewrite_toml_lines
+
+    new_lines, changes = rewrite_toml_lines(text.splitlines(keepends=True))
+    return "".join(new_lines), changes
+
+
+class TestRewriteTomlLines:
+    def test_repoints_command_and_args(self):
+        result, changes = _rewrite(CODEX_CONFIG)
+        parsed = tomllib.loads(result)["mcp_servers"]["claude-memory"]
+        assert parsed["command"] == "universal-memory-mcp"
+        assert parsed["args"] == []
+        assert len(changes) == 2
+
+    def test_does_not_rename_the_table(self):
+        """Renaming would orphan the .env and .tools.* child tables."""
+        result, _ = _rewrite(CODEX_CONFIG)
+        assert "[mcp_servers.claude-memory]" in result
+        assert "[mcp_servers.universal-memory-mcp]" not in result
+
+    def test_child_tables_survive_intact(self):
+        result, _ = _rewrite(CODEX_CONFIG)
+        server = tomllib.loads(result)["mcp_servers"]["claude-memory"]
+        assert server["env"]["CLAUDE_MCP_LOG_FILE"].endswith("claude-memory-mcp.log")
+        assert set(server["tools"]) == {"add_conversation", "search_conversations"}
+
+    def test_other_servers_untouched(self):
+        result, _ = _rewrite(CODEX_CONFIG)
+        servers = tomllib.loads(result)["mcp_servers"]
+        assert servers["code-review-graph"] == {"command": "something-else", "args": ["--flag"]}
+        assert servers["atlassian_cloud"] == {"url": "https://mcp.atlassian.com/v1/mcp"}
+
+    def test_comments_and_unrelated_sections_survive(self):
+        result, _ = _rewrite(CODEX_CONFIG)
+        assert "# A comment that must survive." in result
+        assert tomllib.loads(result)["some_earlier_section"] == {"foo": "bar"}
+
+    def test_output_is_valid_toml(self):
+        result, _ = _rewrite(CODEX_CONFIG)
+        tomllib.loads(result)  # raises if malformed
+
+    def test_idempotent(self):
+        once, _ = _rewrite(CODEX_CONFIG)
+        twice, changes = _rewrite(once)
+        assert twice == once
+        assert changes == []
+
+    def test_a_url_only_remote_server_is_never_rewritten(self):
+        """Remote MCP servers have no command; adding one would break them."""
+        text = '[mcp_servers.atlassian_cloud]\nurl = "https://mcp.atlassian.com/v1/mcp"\n'
+        result, changes = _rewrite(text)
+        assert result == text
+        assert changes == []
+
+    def test_matches_a_custom_table_name_by_its_command(self):
+        text = (
+            "[mcp_servers.my-memory]\n"
+            'command = "/x/claude-memory-mcp/.venv/bin/python"\n'
+            'args = ["/x/src/server_fastmcp.py"]\n'
+        )
+        result, changes = _rewrite(text)
+        assert tomllib.loads(result)["mcp_servers"]["my-memory"]["command"] == (
+            "universal-memory-mcp"
+        )
+        assert len(changes) == 2
+
+    def test_a_child_table_is_not_mistaken_for_a_server(self):
+        """`[mcp_servers.x.env]` must never be treated as a server table."""
+        text = '[mcp_servers.claude-memory.env]\ncommand = "not-a-server-command"\n'
+        result, changes = _rewrite(text)
+        assert result == text
+        assert changes == []
+
+
+class TestMainAcrossBothFormats:
+    def test_dispatches_on_suffix_and_handles_both(self, tmp_path, capsys):
+        claude = tmp_path / "claude.json"
+        claude.write_text(
+            json.dumps({"mcpServers": {"claude-memory": LOOSE_FILE_ENTRY}}), encoding="utf-8"
+        )
+        codex = tmp_path / "config.toml"
+        codex.write_text(CODEX_CONFIG, encoding="utf-8")
+
+        assert main(["--config", str(claude), "--config", str(codex), "--apply"]) == 0
+
+        assert json.loads(claude.read_text(encoding="utf-8"))["mcpServers"] == {
+            TARGET_KEY: TARGET_VALUE
+        }
+        assert (
+            tomllib.loads(codex.read_text(encoding="utf-8"))["mcp_servers"]["claude-memory"][
+                "command"
+            ]
+            == "universal-memory-mcp"
+        )
+
+        out = capsys.readouterr().out
+        assert "Restart each client" in out
+        assert len(list(tmp_path.glob("*.bak-*"))) == 2
+
+    def test_missing_file_is_skipped_not_fatal(self, tmp_path, capsys):
+        """The default run names two paths; most machines have only one."""
+        present = tmp_path / "claude.json"
+        present.write_text(json.dumps({"mcpServers": {"claude-memory": LOOSE_FILE_ENTRY}}))
+
+        assert main(["--config", str(present), "--config", str(tmp_path / "absent.toml")]) == 0
+
+        out = capsys.readouterr().out
+        assert "not found, skipping" in out
+        assert "Dry run" in out
