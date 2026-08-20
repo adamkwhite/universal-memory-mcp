@@ -664,7 +664,7 @@ class ConversationMemoryServer:
         ``{"status": "error", "message": ...}`` on failure (malformed ID,
         missing file, no-op call, conflicting tag ops, I/O error).
         """
-        if set_tags is not None and (add_tags or remove_tags):
+        if self._conflicting_tag_ops(set_tags, add_tags, remove_tags):
             return {
                 "status": "error",
                 "message": ("set_tags is mutually exclusive with add_tags/remove_tags"),
@@ -707,7 +707,7 @@ class ConversationMemoryServer:
             conversation_data["tags"] = new_tags
             changes.append("tags")
 
-        if not changes and (change_note is None or not record_audit):
+        if self._is_noop_update(changes, change_note, record_audit):
             return {
                 "status": "error",
                 "message": "No changes provided",
@@ -765,6 +765,41 @@ class ConversationMemoryServer:
         if audit_line is not None:
             result["audit_line"] = audit_line
         return result
+
+    @staticmethod
+    def _conflicting_tag_ops(
+        set_tags: list[str] | None,
+        add_tags: list[str] | None,
+        remove_tags: list[str] | None,
+    ) -> bool:
+        """True when the caller combined ``set_tags`` with a mutating tag op.
+
+        ``set_tags`` replaces the whole list, so pairing it with ``add_tags`` /
+        ``remove_tags`` is ambiguous rather than additive -- the result would
+        depend on which the implementation happened to apply last. Rejected
+        rather than resolved, so the caller says what they meant.
+
+        Note ``set_tags=[]`` is a legitimate "clear all tags" and must not be
+        confused with "not supplied", which is why this tests ``is not None``.
+        """
+        return set_tags is not None and bool(add_tags or remove_tags)
+
+    @staticmethod
+    def _is_noop_update(
+        changes: list[str],
+        change_note: str | None,
+        record_audit: bool,
+    ) -> bool:
+        """True when the call would write nothing at all.
+
+        The subtlety is the second half: a call with no field changes is *not*
+        a no-op when it carries a ``change_note`` and auditing is on, because
+        ``_prepend_audit_line`` then rewrites ``content`` with the audit line --
+        which is itself the change, and the entire point of a note-only update.
+        Turn auditing off and that same call really does become a no-op, so it
+        is rejected instead of silently touching ``updated_at``.
+        """
+        return not changes and (change_note is None or not record_audit)
 
     @staticmethod
     def _prepend_audit_line(
