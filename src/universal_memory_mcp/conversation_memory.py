@@ -1285,6 +1285,19 @@ class ConversationMemoryServer:
             report["samples"] = samples
         return report
 
+    # The methods below front a synchronous SearchDatabase, so several of them
+    # declare `async` without awaiting anything. That is the interface contract,
+    # not an oversight: this class presents a uniformly async public surface,
+    # and its siblings above (search_conversations, add_conversation,
+    # update_conversation, get_conversation) genuinely await aiofiles I/O.
+    # search_by_topic is the shape the SQLite-only ones grow into -- it awaits
+    # only because it has a JSON fallback, which tag/session/type do not have
+    # *yet*. Dropping `async` would break 4 MCP tool handlers and every test
+    # that awaits them, then have to be reverted the day a fallback lands.
+    # Suppressed in sonar-project.properties as e2 (python:S7503), where the
+    # same reasoning is recorded for whoever reads the findings rather than
+    # the code.
+
     async def get_search_stats(self) -> dict[str, Any]:
         """Get search engine statistics and status."""
         stats: dict[str, Any] = {
