@@ -2,6 +2,29 @@
 
 This file maintains persistent todos across Claude Code sessions.
 
+## Recent Session (August 20, 2026)
+
+**SonarCloud debt cleared to zero; MCP configs migrated on both machines.**
+
+Shipped: #243 (README/CLAUDE.md install commands that failed on PEP 668), #244 (S7503 —
+kept `async`, suppressed with rationale + a guard test), #245 and #246
+(`scripts/switch_mcp_config.py`, Claude Code JSON then Codex TOML), #247 (S3776 — named the
+two guard predicates, closed a coverage gap), #248 (install section 94 → 56 lines).
+**SonarCloud: 0 open issues, gate OK.** Issues #232 and #242 closed.
+
+**Open**
+
+- [ ] **Cut a release when something user-visible lands.** `main` is ahead of the published
+  0.1.2 by this session's src changes (#244's suppression, #247's refactor) — both
+  behaviour-neutral, so there is no urgency. The reason to track it: every MCP server on both
+  machines now runs the **published** package, so nothing in `main` reaches them until a
+  `vX.Y.Z` tag plus `uv tool upgrade universal-memory-mcp`. **0.1.2 is spent; next is 0.1.3.**
+- [ ] **Codex table name is still `claude-memory`** on the work machine, deliberately left.
+  `switch_mcp_config.py` fixes the command but does not rename the Codex table, because that
+  table owns four children (`.env`, three `.tools.*`) that would have to move with it. Purely
+  cosmetic — the connection is verified working, all 10 tools served. If it ever matters, add
+  `--rename` with a test covering the orphaned-child case.
+
 ## Recent Session (August 15, 2026)
 
 **First outside contribution — PR #200 (`locivir`), and the fork-CI gap it exposed**
@@ -133,17 +156,14 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   from #113, `standalone_test.py` from #180). Repo is down to `main` alone.
 - [x] **#197** chore: renamed to `universal-memory-mcp` — package name, logger hierarchy,
   README/CLAUDE.md. Runtime identifiers deliberately kept: `~/claude-memory`, `~/.claude-memory`,
-  `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `FastMCP("claude-memory")`, `sonar.projectKey`,
-  `claude-memory-mcp-venv`. Renaming any of them orphans a working install for no functional gain.
+  `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `sonar.projectKey`, `claude-memory-mcp-venv`. Renaming any
+  of them orphans a working install for no functional gain. (`FastMCP("claude-memory")` was on
+  this list and should not have been — #235 renamed it to `FastMCP("universal-memory-mcp")` and
+  nothing broke, because that name is only the server's self-reported `serverInfo.name`, not
+  anyone's config key. See the corrected table in `CLAUDE.md`.)
 
 **Open**
 
-- [ ] **#232 — 21 pre-existing SonarCloud code smells**, surfaced (not caused) by the #225
-  re-path. Not gate-blocking; the gate measures new code and is OK. Splits into three
-  independent PRs: 11 suppression-comment syntax fixes (mechanical, safe in one pass),
-  4 typing fixes, 1 duplicated SQL literal. **Do not batch the 5 `async`-without-`await`
-  findings** — several are MCP tool handlers whose callers `await` them, so removing `async`
-  is an API change; check callers individually.
 - [x] **MCP configs now use the published console script — DONE 2026-08-17.**
   `uv tool install universal-memory-mcp` puts `universal-memory-mcp` on PATH; all three entries
   in `~/.claude.json` are now `{"command": "universal-memory-mcp", "args": []}` (backup:
@@ -152,8 +172,11 @@ contents.** Count comparisons cannot see it, which is why each hid for months.
   **Consequence to remember: those servers are pinned to the published version.** Repo changes
   do NOT reach them until you cut a release and `uv tool upgrade universal-memory-mcp`. The next
   time a fix appears not to take effect in an MCP tool, this is why.
-  The server still identifies as `claude-memory` (`FastMCP("claude-memory")`), so `/mcp` lists it
-  under that name and tools stay `mcp__claude-memory__*` — only the launch command changed.
+  **Corrected 2026-08-20:** this used to end "the server still identifies as `claude-memory`
+  (`FastMCP("claude-memory")`)". #235 changed it to `FastMCP("universal-memory-mcp")` the next
+  day, so the sentence was false within 24h of being written. What a client lists is its own
+  config key anyway, not the server's self-reported name — the two were conflated here exactly
+  as `CLAUDE.md` warns.
 - [x] **#216 — weekly-summary tests fail ~4h every Sunday evening — FIXED (#218).** UTC/local week-boundary
   mismatch: tests stamp fixtures with `datetime.now(timezone.utc)` while
   `conversation_memory.py:1084` computes the window from local `today`. Once local passes 20:00
@@ -752,9 +775,10 @@ Transform this project from Claude-specific to universal AI assistant memory sys
 - [x] 1.1.3 Update GitHub repository name and description
 - [x] 1.1.4 Update all file headers and docstrings
   > Runtime identifiers were deliberately NOT renamed — `~/claude-memory`, `~/.claude-memory`,
-  > `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `FastMCP("claude-memory")`, `sonar.projectKey`,
-  > `claude-memory-mcp-venv`. See the naming table in CLAUDE.md. Each orphans a working
-  > install or loses SonarCloud history if "tidied up" for consistency.
+  > `CLAUDE_MEMORY_*` / `CLAUDE_MCP_*`, `sonar.projectKey`, `claude-memory-mcp-venv`. See the
+  > corrected naming table in CLAUDE.md. Each orphans a working install or loses SonarCloud
+  > history if "tidied up" for consistency. (`FastMCP("claude-memory")` was listed here too and
+  > was wrong — renamed in #235 with nothing broken.)
 
 **1.2** Documentation Updates
 - [ ] 1.2.1 Replace "Claude" references with "AI Assistant" in README
