@@ -32,8 +32,14 @@ A Model Context Protocol (MCP) server that provides persistent, searchable conve
 **From PyPI (recommended):**
 
 ```bash
-pip install universal-memory-mcp
+uv tool install universal-memory-mcp   # or: pipx install universal-memory-mcp
 ```
+
+This is an application, not a library, so install it with a tool installer rather than `pip`.
+On Debian/Ubuntu and other PEP 668 systems a bare `pip install` into the system interpreter
+fails with `error: externally-managed-environment`; `uv tool` and `pipx` each manage their own
+virtualenv and put the script on your PATH. Inside a virtualenv you have already activated,
+`pip install universal-memory-mcp` works fine.
 
 That gives you a `universal-memory-mcp` console script, which is what an MCP config should point
 at — more robust than an absolute path into a checkout:
@@ -55,7 +61,7 @@ Install from source instead if you intend to modify it — the steps below do th
 **Quick Install** - install the package, then point Claude Code at its console script:
 
 ```bash
-pip install universal-memory-mcp   # or: uv tool install universal-memory-mcp
+uv tool install universal-memory-mcp   # or: pipx install universal-memory-mcp
 claude mcp add --transport stdio universal-memory-mcp -- universal-memory-mcp
 ```
 
@@ -416,10 +422,10 @@ make clean-test-data
 
 ### Common Issues
 
-**MCP Import Errors:**
-```bash
-pip install mcp[cli]  # Include CLI extras
-```
+**MCP Import Errors:** the `mcp` dependency comes with the package, so this normally means the
+server is running under an interpreter that does not have it. Check which one your MCP config
+invokes: the `universal-memory-mcp` console script from `uv tool`/`pipx`, or your virtualenv's
+`python3 -m universal_memory_mcp.server_fastmcp` — not a bare system `python3`.
 
 **Search Returns No Results:**
 - Check conversation indexing: `ls ~/claude-memory/conversations/index.json`

@@ -69,7 +69,9 @@ import with no known parent package". Use the console script or
 
 ### Publishing (#226, #229, #230)
 
-Live on PyPI: https://pypi.org/project/universal-memory-mcp/ — `pip install universal-memory-mcp`.
+Live on PyPI: https://pypi.org/project/universal-memory-mcp/ — `uv tool install universal-memory-mcp`
+(or `pipx`). It is an application, so a bare `pip install` into a system interpreter fails on
+PEP 668 distros with `externally-managed-environment`.
 
 Releases are **tag-gated** and use **Trusted Publishing** (OIDC): there is no PyPI token in this
 repo or in GitHub secrets. `.github/workflows/publish.yml` fires only on a `vX.Y.Z` tag, verifies
