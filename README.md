@@ -1,9 +1,9 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
-[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_claude-memory-mcp&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=adamkwhite_claude-memory-mcp)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=bugs)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=adamkwhite_universal-memory-mcp&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=adamkwhite_universal-memory-mcp)
 
 # Universal Memory MCP — AI Conversation Memory
 

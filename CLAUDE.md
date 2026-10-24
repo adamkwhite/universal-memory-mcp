@@ -34,7 +34,7 @@ which required #225 — the wheel had been shipping without the application. See
 > so this is a local-only papercut and not a regression.
 **Code Quality**: SonarCloud is authoritative and the count moves — query it rather than
 trusting a number written here:
-`curl -s "https://sonarcloud.io/api/issues/search?componentKeys=adamkwhite_claude-memory-mcp&resolved=false" | python3 -c "import json,sys; print(json.load(sys.stdin)['total'])"`.
+`curl -s "https://sonarcloud.io/api/issues/search?componentKeys=adamkwhite_universal-memory-mcp&resolved=false" | python3 -c "import json,sys; print(json.load(sys.stdin)['total'])"`.
 It was **0 open issues, gate OK** on 2026-08-20, when #247 closed the last one. This line
 previously restated "9 code smells" and had drifted — see the no-restated-enumerations rule above.
 **Architecture**: Importer/Exporter mirror pattern (`src/universal_memory_mcp/importers/` ↔ `src/universal_memory_mcp/exporters/`); `src/universal_memory_mcp/config.py` is the single source of configuration truth (env > file > profile > default)
@@ -49,11 +49,9 @@ way — each of these orphans working state if "tidied up" for consistency:
 |---|---|
 | `~/claude-memory/`, `~/.claude-memory/` | orphans every existing install's conversations |
 | `CLAUDE_MEMORY_PATH`, `CLAUDE_MEMORY_DISABLE_SQLITE`, `CLAUDE_MCP_*` | existing setups go dead |
-
-| `sonar.projectKey=adamkwhite_claude-memory-mcp` + README badge URLs | SonarCloud-side identifier — editing it orphans the project and loses all history |
 | `claude-memory-mcp-venv` | the directory exists under that name; a venv cannot be moved without breaking the absolute paths inside its scripts |
 
-A find-and-replace across the repo will hit the last two. Don't.
+A find-and-replace across the repo will hit the last one. Don't.
 
 **Corrected 2026-08-18:** this table used to carry a row for `FastMCP("claude-memory")`, justified
 as "the key in users' `claude_desktop_config.json`". **That was wrong, and it conflated two
@@ -331,8 +329,8 @@ Recent fixes applied to resolve code quality issues:
 
 **SonarCloud Configuration:**
 - Organization: adamkwhite
-- Project Key: adamkwhite_claude-memory-mcp
-- Dashboard: https://sonarcloud.io/summary/overall?id=adamkwhite_claude-memory-mcp
+- Project Key: adamkwhite_universal-memory-mcp
+- Dashboard: https://sonarcloud.io/summary/overall?id=adamkwhite_universal-memory-mcp
 - Exclusions: `tests/**,**/*test*.py,**/test_*.py,**/*benchmark*.py,**/*performance*.py,scripts/**,**/__pycache__/**,htmlcov/**,archive/**,examples/**,docs/generated/**,benchmark_results/**`
 
 **Current Test Coverage: 88.1%** | Duplications: **1.1%** (SonarCloud, verified via API July 2026 — local `--cov` runs undercount because they don't exercise every test file in one pass; trust the SonarCloud dashboard over a local `.coverage` file)
