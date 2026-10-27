@@ -36,7 +36,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "mcp[cli]==1.29.1",
+    "mcp[cli]==1.30.0",
     "jsonschema==4.26.0",
     "aiofiles==25.1.0",
 ]
