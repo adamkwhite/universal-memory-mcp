@@ -83,7 +83,7 @@ publish = [
     "tomli==2.4.1",
 ]
 lint = [
-    "ruff==0.17.1",
+    "ruff==0.17.2",
     "mypy==2.4.0",
     # mypy needs the same stubs the pre-commit hook installs, or the CI type
     # check fails on `Library stubs not installed for "aiofiles"` even though
