@@ -528,14 +528,16 @@ class SearchDatabase:
     @staticmethod
     def _row_to_metadata_result(row: sqlite3.Row) -> dict[str, Any]:
         """Convert a metadata-query row into the standard result dict."""
+        # dict(): Sonar's S6663 misreads sqlite3.Row's by-name indexing as a missing __index__
+        r = dict(row)
         return {
-            "id": row["id"],
-            "title": row["title"],
-            "date": row["date"],
-            "topics": json.loads(row["topics_json"]) if row["topics_json"] else [],
-            "file_path": row["file_path"],
-            "session_id": row["session_id"],
-            "conversation_type": row["conversation_type"],
+            "id": r["id"],
+            "title": r["title"],
+            "date": r["date"],
+            "topics": json.loads(r["topics_json"]) if r["topics_json"] else [],
+            "file_path": r["file_path"],
+            "session_id": r["session_id"],
+            "conversation_type": r["conversation_type"],
         }
 
     def get_conversation_stats(self) -> dict[str, Any]:
