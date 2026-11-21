@@ -1,5 +1,10 @@
 name: Performance Benchmarks
 
+# Cancel superseded PR runs only; scheduled and main-branch runs always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     branches: [ main ]
