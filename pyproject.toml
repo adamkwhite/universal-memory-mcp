@@ -65,7 +65,7 @@ Changelog = "https://github.com/adamkwhite/universal-memory-mcp/releases"
 dev = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
-    "pytest-asyncio==1.4.1.post1",
+    "pytest-asyncio==1.5.0",
     "psutil==7.2.2",
     "types-aiofiles==25.1.0.20260518",
 ]
@@ -83,7 +83,7 @@ publish = [
     "tomli==2.4.1",
 ]
 lint = [
-    "ruff==0.17.4",
+    "ruff==0.17.5",
     "mypy==2.4.1",
     # mypy needs the same stubs the pre-commit hook installs, or the CI type
     # check fails on `Library stubs not installed for "aiofiles"` even though
